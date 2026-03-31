@@ -7,7 +7,7 @@
  1. Cane connection
  2. Current destination
  3. Battery
- 4. Future VLM placeholder
+ 4. Live FastVLM scene output
 */
 
 import SwiftUI
@@ -16,6 +16,7 @@ struct HomeView: View {
     @EnvironmentObject private var connectionManager: CaneConnectionManager
     @EnvironmentObject private var locationManager: LocationManager
     @EnvironmentObject private var speechManager: SpeechManager
+    @EnvironmentObject private var visionManager: VisionManager
     @State private var showsNavigationSearch = false
 
     var body: some View {
@@ -27,7 +28,7 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         navigationSection
                         batterySection
-                        vlmPlaceholderSection
+                        vlmSection
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -44,6 +45,7 @@ struct HomeView: View {
             }
             .onChange(of: connectionManager.caneState.connectionStatus) { newStatus in
                 speechManager.speakUrgent("Cane connection \(newStatus.rawValue.lowercased()).")
+                visionManager.setInferenceEnabled(newStatus == .connected)
             }
             .onChange(of: locationManager.currentInstruction) { newInstruction in
                 guard locationManager.hasActiveNavigation else {
@@ -104,6 +106,7 @@ struct HomeView: View {
     private var navigationSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             connectionButton
+            networkModeControl
             navigationButton
         }
         .padding(20)
@@ -148,7 +151,9 @@ struct HomeView: View {
             primaryActionLabel(
                 connectionManager.caneState.connectionStatus.rawValue,
                 systemImage: connectionManager.caneState.connectionStatus == .connected ? "wifi" : "wifi.slash",
-                detail: connectionManager.caneState.connectionStatus == .connected ? "Double-tap to disconnect the cane." : "Double-tap to connect the cane over Wi-Fi."
+                detail: connectionManager.caneState.connectionStatus == .connected
+                    ? "Double-tap to disconnect. \(connectionManager.activeEndpointLabel)."
+                    : "Double-tap to connect over Wi-Fi. \(connectionManager.networkModeDescription)"
             )
         }
         .buttonStyle(.plain)
@@ -169,6 +174,39 @@ struct HomeView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(locationManager.hasActiveNavigation ? "Current destination \(locationManager.navigationStatusValue)" : "No current navigation")
         .accessibilityHint(locationManager.hasActiveNavigation ? "Double-tap to change destination." : "Double-tap to search for a destination.")
+    }
+
+    private var networkModeControl: some View {
+        HStack(spacing: 10) {
+            networkModeChip(.auto, label: "Auto")
+            networkModeChip(.phoneHotspot, label: "Hotspot")
+            networkModeChip(.piAccessPoint, label: "Pi AP")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Cane network mode")
+        .accessibilityHint("Choose hotspot or Pi access point transport profile.")
+    }
+
+    private func networkModeChip(_ mode: CaneNetworkMode, label: String) -> some View {
+        let isSelected = connectionManager.caneState.networkMode == mode
+        return Button {
+            connectionManager.setNetworkMode(mode)
+        } label: {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isSelected ? Color.white : Color(red: 0.15, green: 0.21, blue: 0.24))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    isSelected
+                    ? Color(red: 0.18, green: 0.34, blue: 0.37)
+                    : Color.white.opacity(0.82),
+                    in: Capsule()
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label) mode")
+        .accessibilityHint(isSelected ? "Selected" : "Double tap to select")
     }
 
     private var batterySection: some View {
@@ -217,22 +255,22 @@ struct HomeView: View {
         .accessibilityHint("Opens the detailed battery screen.")
     }
 
-    private var vlmPlaceholderSection: some View {
+    private var vlmSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("This area is reserved for the future on-device Vision-Language Model that will describe the scene in real time.")
+            Text("FastVLM runs on-device from Pi camera frames to provide scene-aware guidance.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             NavigationLink(destination: CVModelView()) {
-                Text("Open VLM placeholder")
+                Text("Open FastVLM view")
                     .font(.headline.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .background(Color.white.opacity(0.82), in: Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Open VLM placeholder")
-            .accessibilityHint("Opens the future scene understanding placeholder screen.")
+            .accessibilityLabel("Open FastVLM view")
+            .accessibilityHint("Opens live scene understanding output from Pi camera frames.")
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -274,7 +312,6 @@ struct HomeView: View {
             connectionManager.disconnectFromCane()
         } else {
             connectionManager.connectToCane()
-            connectionManager.markConnectedForDemo()
         }
     }
 

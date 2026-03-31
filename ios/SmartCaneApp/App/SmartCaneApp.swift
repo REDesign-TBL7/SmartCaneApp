@@ -14,14 +14,22 @@ struct SmartCaneDemoApp: App {
     @StateObject private var locationManager: LocationManager
     @StateObject private var speechManager: SpeechManager
     @StateObject private var profileManager: ProfileManager
+    @StateObject private var visionManager: VisionManager
+    @StateObject private var fusionManager: GuidanceFusionManager
 
     init() {
         let profileManager = ProfileManager()
         let connectionManager = CaneConnectionManager()
+        let visionManager = VisionManager(connectionManager: connectionManager)
+#if canImport(FastVLM) && canImport(MLXVLM)
+        visionManager.fastVLMEngine = FastVLMAppleEngine()
+#endif
         _profileManager = StateObject(wrappedValue: profileManager)
         _connectionManager = StateObject(wrappedValue: connectionManager)
         _locationManager = StateObject(wrappedValue: LocationManager(profileManager: profileManager, connectionManager: connectionManager))
         _speechManager = StateObject(wrappedValue: SpeechManager())
+        _visionManager = StateObject(wrappedValue: visionManager)
+        _fusionManager = StateObject(wrappedValue: GuidanceFusionManager(connectionManager: connectionManager, visionManager: visionManager))
     }
 
     var body: some Scene {
@@ -31,6 +39,8 @@ struct SmartCaneDemoApp: App {
                 .environmentObject(locationManager)
                 .environmentObject(speechManager)
                 .environmentObject(profileManager)
+                .environmentObject(visionManager)
+                .environmentObject(fusionManager)
                 .tint(Color(red: 0.18, green: 0.34, blue: 0.37))
         }
     }

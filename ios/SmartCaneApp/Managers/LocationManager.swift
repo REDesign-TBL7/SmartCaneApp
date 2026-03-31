@@ -448,7 +448,54 @@ final class LocationManager: NSObject, ObservableObject {
             return .forward
         }
 
+        if let currentLocationCoordinate,
+           let activeDestination {
+            let desiredBearing = bearingDegrees(from: currentLocationCoordinate, to: activeDestination.coordinate)
+            let delta = normalizedBearingDelta(desiredBearing: desiredBearing, heading: connectionManager.caneState.headingDegrees)
+
+            if delta > 18 {
+                return .right
+            }
+
+            if delta < -18 {
+                return .left
+            }
+        }
+
         return .forward
+    }
+
+    private func bearingDegrees(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D) -> Double {
+        let startLatitude = start.latitude * .pi / 180
+        let startLongitude = start.longitude * .pi / 180
+        let endLatitude = end.latitude * .pi / 180
+        let endLongitude = end.longitude * .pi / 180
+
+        let dLongitude = endLongitude - startLongitude
+        let y = sin(dLongitude) * cos(endLatitude)
+        let x = cos(startLatitude) * sin(endLatitude) - sin(startLatitude) * cos(endLatitude) * cos(dLongitude)
+        let radiansBearing = atan2(y, x)
+        let degreesBearing = radiansBearing * 180 / .pi
+
+        if degreesBearing < 0 {
+            return degreesBearing + 360
+        }
+
+        return degreesBearing
+    }
+
+    private func normalizedBearingDelta(desiredBearing: Double, heading: Double) -> Double {
+        var delta = desiredBearing - heading
+
+        while delta > 180 {
+            delta -= 360
+        }
+
+        while delta < -180 {
+            delta += 360
+        }
+
+        return delta
     }
 
     private func searchRegion(around center: CLLocationCoordinate2D) -> MKCoordinateRegion {
@@ -472,6 +519,10 @@ extension LocationManager: CLLocationManagerDelegate {
         }
 
         currentLocationCoordinate = latestLocation.coordinate
+        connectionManager.updatePhoneLocation(
+            latitude: latestLocation.coordinate.latitude,
+            longitude: latestLocation.coordinate.longitude
+        )
         searchCompleter.region = searchRegion(around: latestLocation.coordinate)
 
         if activeDestination != nil {

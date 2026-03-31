@@ -19,6 +19,9 @@
 		A10000000000000000000039 /* UserProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000040 /* UserProfileView.swift */; };
 		A10000000000000000000045 /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000046 /* ProfileManager.swift */; };
 		A10000000000000000000047 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000048 /* UserProfile.swift */; };
+		A10000000000000000000049 /* VisionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000004A /* VisionManager.swift */; };
+		A1000000000000000000004B /* GuidanceFusionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000004C /* GuidanceFusionManager.swift */; };
+		A1000000000000000000004D /* FastVLMAppleEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000004E /* FastVLMAppleEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +38,9 @@
 		A10000000000000000000040 /* UserProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileView.swift; sourceTree = "<group>"; };
 		A10000000000000000000046 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
 		A10000000000000000000048 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
+		A1000000000000000000004A /* VisionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionManager.swift; sourceTree = "<group>"; };
+		A1000000000000000000004C /* GuidanceFusionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidanceFusionManager.swift; sourceTree = "<group>"; };
+		A1000000000000000000004E /* FastVLMAppleEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMAppleEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,6 +108,9 @@
 				A10000000000000000000017 /* LocationManager.swift */,
 				A10000000000000000000018 /* SpeechManager.swift */,
 				A10000000000000000000046 /* ProfileManager.swift */,
+				A1000000000000000000004A /* VisionManager.swift */,
+				A1000000000000000000004C /* GuidanceFusionManager.swift */,
+				A1000000000000000000004E /* FastVLMAppleEngine.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -196,6 +205,9 @@
 				A10000000000000000000039 /* UserProfileView.swift in Sources */,
 				A10000000000000000000045 /* ProfileManager.swift in Sources */,
 				A10000000000000000000047 /* UserProfile.swift in Sources */,
+				A10000000000000000000049 /* VisionManager.swift in Sources */,
+				A1000000000000000000004B /* GuidanceFusionManager.swift in Sources */,
+				A1000000000000000000004D /* FastVLMAppleEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,13 +1,8 @@
-/*
- File: CVModelView.swift
- Purpose:
- This file contains the placeholder UI for the future on-device
- Vision-Language Model (VLM) that will perform real-time scene understanding.
-*/
-
 import SwiftUI
 
 struct CVModelView: View {
+    @EnvironmentObject private var visionManager: VisionManager
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -21,10 +16,10 @@ struct CVModelView: View {
             .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 20) {
-                Text("On-device VLM")
+                Text("On-device FastVLM")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
 
-                Text("Future real-time scene understanding placeholder")
+                Text("Pi camera frames processed on iPhone")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -33,13 +28,13 @@ struct CVModelView: View {
                         .fill(Color.black)
                         .frame(height: 300)
                         .overlay(
-                            Text("Live scene stream placeholder")
+                            Text("Live Pi camera stream")
                                 .font(.title3.bold())
                                 .foregroundStyle(.white)
                         )
                         .accessibilityHidden(true)
 
-                    Text("Placeholder")
+                    Text(visionManager.inferenceEnabled ? "Inference On" : "Inference Off")
                         .font(.headline.weight(.semibold))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
@@ -48,15 +43,15 @@ struct CVModelView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Mock scene summary")
+                    Text("Latest scene summary")
                         .font(.headline.weight(.semibold))
-                    Text("Scene: outdoor walkway")
+                    Text(visionManager.latestSceneSummary)
                         .font(.body)
-                    Text("Objects: person, railing, staircase")
+                    Text("Hazard tags: \(visionManager.latestHazardTags.isEmpty ? \"none\" : visionManager.latestHazardTags.joined(separator: \", \") )")
                         .font(.body)
-                    Text("Suggested cue: keep slightly left")
+                    Text("Frame age: \(visionManager.latestFrameAgeMs) ms")
                         .font(.body)
-                    Text("TODO: Replace this placeholder with real on-device VLM output and streaming scene understanding.")
+                    Text("Inference is computed on-device from Pi camera frames and fed into guidance fusion.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -75,13 +70,15 @@ struct CVModelView: View {
             .padding(24)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("On-device Vision Language Model placeholder screen")
-        .accessibilityHint("Shows the future real-time scene understanding placeholder interface.")
+        .accessibilityLabel("On-device FastVLM screen")
+        .accessibilityHint("Shows live scene understanding from Pi camera frames.")
     }
 }
 
 struct CVModelView_Previews: PreviewProvider {
     static var previews: some View {
+        let connectionManager = CaneConnectionManager()
         CVModelView()
+            .environmentObject(VisionManager(connectionManager: connectionManager))
     }
 }

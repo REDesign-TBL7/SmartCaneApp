@@ -1,35 +1,53 @@
-# SmartCaneApp
+# Smart Cane Monorepo
 
-An iOS SwiftUI prototype for a smart white cane assistive device.
+This repository contains the two runtime codebases for the smart cane system.
 
-## Current Scope
-
-- Blind-first home screen with actionable status controls
-- Destination search using Apple location APIs
-- Local persistence for saved places and trip stats
-- Spoken updates through `AVSpeechSynthesizer`
-- Wi-Fi cane connection manager placeholder for Raspberry Pi Zero integration
-
-## Project Structure
+## Layout
 
 ```text
-SmartCaneApp/
-├── App/
-├── Managers/
-├── Models/
-└── Views/
+ios/       SwiftUI app for navigation, voice UX, and on-device FastVLM inference
+pi/        Python runtime for motors, HC-SR04, MPU9250, camera streaming, and Wi-Fi server
+protocol/  Shared JSON protocol schema between iOS and Pi
+docs/      Architecture, safety, and calibration notes
+infra/     Pi network provisioning and service install scripts
 ```
 
-## Important Placeholder
+## Run iOS app
 
-The future Wi-Fi transport layer for sending `LEFT`, `RIGHT`, `FORWARD`, and `STOP`
-to the Raspberry Pi Zero is currently stubbed in:
-
-- `SmartCaneApp/Managers/CaneConnectionManager.swift`
-
-## Running
-
-1. Open `SmartCaneApp.xcodeproj` in Xcode.
-2. Choose an iPhone simulator or your physical iPhone.
+1. Open `ios/SmartCaneApp.xcodeproj` in Xcode.
+2. Choose an iPhone simulator or physical iPhone.
 3. Build and run the `SmartCaneApp` scheme.
 
+## Run Pi runtime
+
+```bash
+cd pi
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python src/main.py
+```
+
+WebSocket endpoint defaults to `ws://<pi-ip>:8080/ws`.
+
+## Connectivity behavior
+
+- The iOS cane transport is Wi-Fi only and explicitly disables cellular usage.
+- This keeps phone-to-cane traffic off cellular data even when mobile data is enabled.
+- Network modes:
+  - `Auto`: prefers phone hotspot endpoint then Pi AP profile.
+  - `Hotspot`: best for outdoor usage with phone cellular internet preserved.
+  - `Pi AP`: direct cane AP link.
+
+## Setup guides
+
+- Pi networking and service setup: `docs/pi-network-setup.md`
+- FastVLM model and app integration: `docs/fastvlm-integration.md`
+
+## Xcode quick path
+
+1. Open `ios/SmartCaneApp.xcodeproj`.
+2. Add package dependencies listed in `docs/fastvlm-integration.md`.
+3. Download model files: `ios/scripts/get_fastvlm_model.sh 0.5b ios/Resources/FastVLM/model`.
+4. Add `ios/Resources/FastVLM/model` into target resources.
+5. Build and run on a physical iPhone.

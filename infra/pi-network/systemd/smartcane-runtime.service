@@ -1,0 +1,16 @@
+[Unit]
+Description=SmartCane Pi Runtime
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/smart-cane/pi
+ExecStart=/opt/smart-cane/pi/.venv/bin/python /opt/smart-cane/pi/src/main.py
+Restart=always
+RestartSec=2
+User=pi
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
