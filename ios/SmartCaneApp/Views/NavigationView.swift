@@ -294,8 +294,10 @@ struct NavigationView_Previews: PreviewProvider {
     static var previews: some View {
         let profileManager = ProfileManager()
         let connectionManager = CaneConnectionManager()
+        let visionManager = VisionManager(connectionManager: connectionManager)
+        let fusionManager = GuidanceFusionManager(connectionManager: connectionManager, visionManager: visionManager)
 
         return NavigationView()
-            .environmentObject(LocationManager(profileManager: profileManager, connectionManager: connectionManager))
+            .environmentObject(LocationManager(profileManager: profileManager, connectionManager: connectionManager, fusionManager: fusionManager))
     }
 }

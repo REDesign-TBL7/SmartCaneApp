@@ -210,49 +210,41 @@ struct HomeView: View {
     }
 
     private var batterySection: some View {
-        NavigationLink(destination: BatteryView()) {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 18) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(0.9))
-                            .frame(width: 70, height: 70)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .center, spacing: 18) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.9))
+                        .frame(width: 70, height: 70)
 
-                        Image(systemName: batteryIconName)
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(batteryColor)
-                            .accessibilityHidden(true)
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("\(connectionManager.caneState.batteryPercentage)%")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-
-                        Text("Current cane battery")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer(minLength: 8)
-
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                    Image(systemName: batteryIconName)
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(batteryColor)
                         .accessibilityHidden(true)
                 }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(connectionManager.caneState.batteryPercentage)%")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+
+                    Text("Current cane battery")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
             }
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.60), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.white.opacity(0.55), lineWidth: 1)
-            )
         }
-        .buttonStyle(.plain)
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.60), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Cane battery: \(connectionManager.caneState.batteryPercentage) percent")
-        .accessibilityHint("Opens the detailed battery screen.")
+        .accessibilityHint("Shows the latest battery level from the cane.")
     }
 
     private var vlmSection: some View {
@@ -326,11 +318,14 @@ struct HomeView_Previews: PreviewProvider {
         let profileManager = ProfileManager()
         let connectionManager = CaneConnectionManager()
         let speechManager = SpeechManager()
+        let visionManager = VisionManager(connectionManager: connectionManager)
+        let fusionManager = GuidanceFusionManager(connectionManager: connectionManager, visionManager: visionManager)
 
         HomeView()
             .environmentObject(connectionManager)
-            .environmentObject(LocationManager(profileManager: profileManager, connectionManager: connectionManager))
+            .environmentObject(LocationManager(profileManager: profileManager, connectionManager: connectionManager, fusionManager: fusionManager))
             .environmentObject(speechManager)
             .environmentObject(profileManager)
+            .environmentObject(visionManager)
     }
 }

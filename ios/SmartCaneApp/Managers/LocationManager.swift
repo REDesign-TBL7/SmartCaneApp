@@ -104,6 +104,7 @@ final class LocationManager: NSObject, ObservableObject {
     private let defaultSearchCenter = CLLocationCoordinate2D(latitude: 1.3521, longitude: 103.8198)
     private let profileManager: ProfileManager
     private let connectionManager: CaneConnectionManager
+    private let fusionManager: GuidanceFusionManager
     private var cancellables: Set<AnyCancellable> = []
     private var hasRecordedDistanceForCurrentTrip = false
     private var currentRouteSummary = "Route pending"
@@ -138,9 +139,10 @@ final class LocationManager: NSObject, ObservableObject {
         totalDistanceText = formatProfileDistance(profile.totalDistanceMeters)
     }
 
-    init(profileManager: ProfileManager, connectionManager: CaneConnectionManager) {
+    init(profileManager: ProfileManager, connectionManager: CaneConnectionManager, fusionManager: GuidanceFusionManager) {
         self.profileManager = profileManager
         self.connectionManager = connectionManager
+        self.fusionManager = fusionManager
         super.init()
 
         locationManager.delegate = self
@@ -350,6 +352,8 @@ final class LocationManager: NSObject, ObservableObject {
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: currentLocationCoordinate))
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
+        // This app currently uses MapKit directions, not the Google Maps Directions API.
+        // Keep walking mode explicit on every directions request for cane guidance.
         request.transportType = .walking
 
         do {
@@ -364,10 +368,10 @@ final class LocationManager: NSObject, ObservableObject {
             if let firstInstruction = route.steps.first(where: { !$0.instructions.isEmpty })?.instructions {
                 currentInstruction = firstInstruction
                 let command = commandForInstruction(firstInstruction)
-                connectionManager.sendNavigationCommand(command, instructionText: firstInstruction)
+                fusionManager.applyFusedCommand(baseCommand: command, instructionText: firstInstruction)
             } else {
                 currentInstruction = "Navigating to \(destination.name)"
-                connectionManager.sendNavigationCommand(.forward, instructionText: currentInstruction)
+                fusionManager.applyFusedCommand(baseCommand: .forward, instructionText: currentInstruction)
             }
 
             if !hasRecordedDistanceForCurrentTrip {
@@ -389,7 +393,7 @@ final class LocationManager: NSObject, ObservableObject {
         } catch {
             currentRouteSummary = "Route pending"
             currentInstruction = "Route unavailable from current location."
-            connectionManager.sendNavigationCommand(.stop, instructionText: currentInstruction)
+            fusionManager.applyFusedCommand(baseCommand: .stop, instructionText: currentInstruction)
         }
     }
 

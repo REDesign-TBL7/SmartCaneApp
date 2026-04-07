@@ -21,15 +21,16 @@ struct SmartCaneDemoApp: App {
         let profileManager = ProfileManager()
         let connectionManager = CaneConnectionManager()
         let visionManager = VisionManager(connectionManager: connectionManager)
+        let fusionManager = GuidanceFusionManager(connectionManager: connectionManager, visionManager: visionManager)
 #if canImport(FastVLM) && canImport(MLXVLM)
         visionManager.fastVLMEngine = FastVLMAppleEngine()
 #endif
         _profileManager = StateObject(wrappedValue: profileManager)
         _connectionManager = StateObject(wrappedValue: connectionManager)
-        _locationManager = StateObject(wrappedValue: LocationManager(profileManager: profileManager, connectionManager: connectionManager))
+        _locationManager = StateObject(wrappedValue: LocationManager(profileManager: profileManager, connectionManager: connectionManager, fusionManager: fusionManager))
         _speechManager = StateObject(wrappedValue: SpeechManager())
         _visionManager = StateObject(wrappedValue: visionManager)
-        _fusionManager = StateObject(wrappedValue: GuidanceFusionManager(connectionManager: connectionManager, visionManager: visionManager))
+        _fusionManager = StateObject(wrappedValue: fusionManager)
     }
 
     var body: some Scene {

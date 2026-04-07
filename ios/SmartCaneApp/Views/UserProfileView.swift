@@ -297,10 +297,12 @@ struct UserProfileView_Previews: PreviewProvider {
     static var previews: some View {
         let profileManager = ProfileManager()
         let connectionManager = CaneConnectionManager()
+        let visionManager = VisionManager(connectionManager: connectionManager)
+        let fusionManager = GuidanceFusionManager(connectionManager: connectionManager, visionManager: visionManager)
 
         return UserProfileView()
             .environmentObject(connectionManager)
-            .environmentObject(LocationManager(profileManager: profileManager, connectionManager: connectionManager))
+            .environmentObject(LocationManager(profileManager: profileManager, connectionManager: connectionManager, fusionManager: fusionManager))
             .environmentObject(profileManager)
     }
 }
