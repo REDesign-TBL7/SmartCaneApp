@@ -17,11 +17,12 @@ FORWARD
 STOP
 ```
 
-The ESP32 also owns the motor-unit IMU. It reports motor-unit orientation back to
-the Pi over the same serial link:
+The ESP32 also owns the motor-unit IMU and the ultrasonic obstacle sensors used
+for the demo. It reports both back to the Pi over the same serial link:
 
 ```text
 MOTOR_IMU <available> <headingDegrees> <pitchDegrees> <rollDegrees>
+ULTRASONIC <nearestObstacleCm>
 ```
 
 The sketch currently includes the telemetry hook and a TODO inside
@@ -32,6 +33,12 @@ that handle IMU is reserved for camera deblur/stabilization.
 Upload `motor_controller/motor_controller.ino` to the ESP32. The sketch is based
 on the original `test_1.ino` DRV8313 pin map and 6-step commutation pattern, but
 it waits for Pi serial commands before moving the motors.
+
+Ultrasonic note:
+
+- Update `US1_TRIG`, `US1_ECHO`, `US2_TRIG`, `US2_ECHO`, `US3_TRIG`, and `US3_ECHO`
+  in the sketch to match your actual ESP32 wiring.
+- Leave a pair as `-1` to disable that sensor.
 
 Normal baud rate:
 

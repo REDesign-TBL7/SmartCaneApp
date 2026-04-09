@@ -3,8 +3,8 @@
 ## Runtimes
 
 - `ios/`: route guidance, voice UX, FastVLM inference, command generation
-- `pi/`: iOS WebSocket server, HC-SR04 sensing, handle-mounted IMU for camera deblur, heartbeat safety, telemetry, camera frame uplink, and final command forwarding to ESP32
-- `esp32/`: DRV8313 motor control from Pi serial commands plus the motor-unit IMU used for haptic motor guidance
+- `pi/`: iOS WebSocket server, handle-mounted IMU backup for camera deblur, heartbeat safety, telemetry, camera frame uplink, and final command forwarding to ESP32
+- `esp32/`: DRV8313 motor control from Pi serial commands plus the motor-unit IMU and ultrasonic sensing used for demo safety input
 
 ## Safety
 
@@ -24,7 +24,8 @@ the ESP32 motor controller.
 `iOS app -> WebSocket JSON -> Raspberry Pi safety loop -> serial line -> ESP32`
 
 The Pi forwards `LEFT`, `RIGHT`, `FORWARD`, or `STOP` as newline-terminated serial
-commands. The ESP32 owns the DRV8313 pin sequencing.
+commands. The ESP32 owns the DRV8313 pin sequencing and reports obstacle
+distance back over serial.
 
 ## IMU ownership
 

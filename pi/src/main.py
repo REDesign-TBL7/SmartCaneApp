@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import os
 
 import websockets
 
@@ -8,13 +10,39 @@ from gps_manager import GPSManager
 from imu_manager import HandleIMUManager
 from motor_controller import MotorController
 from safety_manager import SafetyManager
-from ultrasonic_manager import UltrasonicManager
+
+
+def configure_logging() -> None:
+    os.makedirs("logs", exist_ok=True)
+    log_level_name = os.getenv("SMARTCANE_LOG_LEVEL", "DEBUG").upper()
+    log_level = getattr(logging, log_level_name, logging.DEBUG)
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+    root_logger.handlers.clear()
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(log_level)
+    console_handler.setFormatter(formatter)
+
+    file_handler = logging.FileHandler("logs/pi_runtime.log")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+
+
+logger = logging.getLogger(__name__)
 
 
 async def telemetry_and_control_loop(
     comm_server: CommServer,
     motor_controller: MotorController,
-    ultrasonic_manager: UltrasonicManager,
     handle_imu_manager: HandleIMUManager,
     gps_manager: GPSManager,
     safety_manager: SafetyManager,
@@ -22,9 +50,9 @@ async def telemetry_and_control_loop(
     last_heartbeat_count = 0
 
     while True:
-        obstacle_cm = ultrasonic_manager.read_nearest_obstacle_cm()
-        handle_imu = handle_imu_manager.read_camera_deblur_sample()
         motor_imu = motor_controller.poll_motor_imu()
+        obstacle_cm = motor_controller.latest_ultrasonic.nearest_obstacle_cm
+        handle_imu = handle_imu_manager.read_camera_deblur_sample()
 
         if comm_server.heartbeat_count > last_heartbeat_count:
             safety_manager.register_heartbeat()
@@ -40,8 +68,15 @@ async def telemetry_and_control_loop(
             safety_manager.fault_code = "NONE"
 
         if safety_manager.should_force_stop(obstacle_cm):
+            logger.debug("Safety forcing STOP, obstacle=%.2f fault=%s", obstacle_cm, safety_manager.fault_code)
             motor_controller.stop()
         else:
+            logger.debug(
+                "Applying app command=%s obstacle=%.2f heartbeat=%s",
+                comm_server.latest_discrete_command,
+                obstacle_cm,
+                comm_server.heartbeat_count,
+            )
             motor_controller.apply_discrete_command(comm_server.latest_discrete_command)
 
         telemetry = comm_server.telemetry_payload(
@@ -58,6 +93,14 @@ async def telemetry_and_control_loop(
             status_message=motor_controller.status_message,
         )
         await comm_server.broadcast_telemetry(telemetry)
+        logger.debug(
+            "Telemetry sent obstacle=%.2f motor_heading=%s handle_heading=%.2f gps=%s fault=%s",
+            obstacle_cm,
+            motor_imu.heading_degrees,
+            float(handle_imu["heading_degrees"]),
+            gps.fix_status,
+            safety_manager.fault_code,
+        )
 
         await asyncio.sleep(0.2)
 
@@ -69,13 +112,15 @@ async def camera_stream_loop(
         packet = camera_streamer.frame_packet()
         if packet is not None:
             await comm_server.broadcast_telemetry(packet)
+            logger.debug("Broadcasted camera frame packet")
         await asyncio.sleep(0.45)
 
 
 async def run_server() -> None:
+    configure_logging()
+    logger.info("Starting SmartCane Pi runtime")
     comm_server = CommServer()
     motor_controller = MotorController()
-    ultrasonic_manager = UltrasonicManager()
     handle_imu_manager = HandleIMUManager()
     gps_manager = GPSManager()
     safety_manager = SafetyManager()
@@ -83,11 +128,11 @@ async def run_server() -> None:
 
     try:
         async with websockets.serve(comm_server.handler, "0.0.0.0", 8080):
+            logger.info("WebSocket server listening on 0.0.0.0:8080")
             await asyncio.gather(
                 telemetry_and_control_loop(
                     comm_server,
                     motor_controller,
-                    ultrasonic_manager,
                     handle_imu_manager,
                     gps_manager,
                     safety_manager,
@@ -95,8 +140,8 @@ async def run_server() -> None:
                 camera_stream_loop(comm_server, camera_streamer),
             )
     finally:
+        logger.info("Shutting down SmartCane Pi runtime")
         motor_controller.close()
-        ultrasonic_manager.close()
 
 
 if __name__ == "__main__":

@@ -4,14 +4,19 @@ import UIKit
 @MainActor
 final class VisionManager: ObservableObject {
     @Published var latestSceneSummary = "VLM idle"
+    @Published var latestRawModelOutput = "VLM idle"
     @Published var latestHazardTags: [String] = []
     @Published var inferenceEnabled = false
     @Published var latestFrameAgeMs: Int = 0
+    @Published var latestFramePreview: UIImage?
+    @Published var latestFrameByteCount: Int = 0
+    @Published var debugLogEntries: [DebugLogEntry] = []
 
     private let connectionManager: CaneConnectionManager
     private var inferenceTask: Task<Void, Never>?
     private var latestFrameData: Data?
     private var latestFrameTimestamp = Date.distantPast
+    private let latestPrompt = "Describe hazards relevant for blind cane guidance in one sentence."
 
     init(connectionManager: CaneConnectionManager) {
         self.connectionManager = connectionManager
@@ -19,19 +24,25 @@ final class VisionManager: ObservableObject {
             Task { @MainActor in
                 self?.latestFrameData = frameData
                 self?.latestFrameTimestamp = Date()
+                self?.latestFrameByteCount = frameData.count
+                self?.latestFramePreview = UIImage(data: frameData)
+                self?.appendDebugLog("frame", "Received frame \(frameData.count) bytes")
             }
         }
+        appendDebugLog("vision", "Vision manager initialized")
     }
 
     func setInferenceEnabled(_ enabled: Bool) {
         inferenceEnabled = enabled
         if enabled {
+            appendDebugLog("vision", "Inference enabled")
             startInferenceLoop()
         } else {
             inferenceTask?.cancel()
             inferenceTask = nil
             publishSceneSummary("VLM idle")
             latestHazardTags = []
+            appendDebugLog("vision", "Inference disabled")
         }
     }
 
@@ -56,6 +67,7 @@ final class VisionManager: ObservableObject {
 
     private func runFastVLM(on frameData: Data) async -> String {
         if let fastVLMEngine {
+            appendDebugLog("inference", "Running FastVLM engine on \(frameData.count) bytes")
             return await fastVLMEngine.inferHazardSummary(from: frameData)
         }
 
@@ -65,9 +77,8 @@ final class VisionManager: ObservableObject {
 
         let width = Int(image.size.width)
         let height = Int(image.size.height)
-        let prompt = "Describe hazards relevant for blind cane guidance in one sentence."
-
-        return "FastVLM pending SDK integration. Frame \(width)x\(height). Prompt: \(prompt)"
+        appendDebugLog("inference", "Using placeholder inference on frame \(width)x\(height)")
+        return "FastVLM pending SDK integration. Frame \(width)x\(height). Prompt: \(latestPrompt)"
     }
 
     var fastVLMEngine: FastVLMEngine?
@@ -77,6 +88,8 @@ final class VisionManager: ObservableObject {
         guard !normalized.isEmpty else {
             return
         }
+
+        latestRawModelOutput = normalized
 
         let lowered = normalized.lowercased()
         var tags: [String] = []
@@ -98,12 +111,25 @@ final class VisionManager: ObservableObject {
         }
 
         latestHazardTags = tags
+        appendDebugLog("inference", "Output: \(normalized)")
+        appendDebugLog("hazards", "Tags: \(tags.isEmpty ? "none" : tags.joined(separator: ", "))")
         publishSceneSummary(normalized)
     }
 
     private func publishSceneSummary(_ summary: String) {
         latestSceneSummary = summary
         connectionManager.updateVLMSummary(summary)
+    }
+
+    var latestPromptText: String {
+        latestPrompt
+    }
+
+    private func appendDebugLog(_ subsystem: String, _ message: String) {
+        debugLogEntries.insert(DebugLogEntry(subsystem: subsystem, message: message), at: 0)
+        if debugLogEntries.count > 160 {
+            debugLogEntries.removeLast(debugLogEntries.count - 160)
+        }
     }
 }
 

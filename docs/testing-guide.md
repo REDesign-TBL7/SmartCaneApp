@@ -278,6 +278,110 @@ Pass criteria:
 - iOS app changes from `Disconnected` to `Connected`.
 - Telemetry status appears in app.
 
+## 7A) Focused Phone App to Pi Test Only
+
+Use this when you want to verify only:
+
+- iPhone app
+- Wi-Fi network path
+- Pi WebSocket runtime
+- Pi camera frame uplink
+- Pi telemetry
+
+Do not attach the ESP32 or motors for this test.
+
+Purpose:
+
+- Confirm the phone can connect to Pi over Wi-Fi.
+- Confirm `HEARTBEAT`, route commands, and `DEBUG_PING` reach the Pi.
+- Confirm Pi telemetry and camera frames reach the app.
+- Confirm the FastVLM debug screen shows what the iPhone is receiving.
+
+Setup:
+
+- Pi is powered and on the target network.
+- iPhone is on the same network.
+- ESP32 may be disconnected.
+- Motors remain off.
+- Pi camera should be connected if you want to test VLM frame flow.
+
+Start the Pi runtime:
+
+```bash
+cd /Users/hanyuxuan/Desktop/REDesign/pi
+source .venv/bin/activate
+python src/main.py
+```
+
+Watch Pi logs in another terminal:
+
+```bash
+tail -f /Users/hanyuxuan/Desktop/REDesign/pi/logs/pi_runtime.log
+```
+
+Phone app steps:
+
+1. Open the iOS app on the phone.
+2. Select the correct network mode:
+   - `Hotspot` if Pi joined your phone hotspot
+   - `Pi AP` if phone joined the Pi access point
+3. Activate the connection button.
+4. Wait for `Connected`.
+5. Open the FastVLM screen.
+6. Press `Send test ping to Pi`.
+7. Confirm the app shows `Last ping` with a round-trip time in milliseconds.
+8. Search for a nearby destination from the main screen and select it.
+9. Return to the FastVLM screen and inspect:
+   - connection logs
+   - navigation logs
+   - VLM logs
+   - latest frame preview, if the Pi camera is active
+
+Expected Pi log events:
+
+- app client connected
+- `DEBUG_PING` received
+- `DEBUG_PONG` sent
+- heartbeat updates
+- route command updates
+- telemetry broadcasts
+- camera frame broadcasts, if camera is enabled
+
+Expected app behavior:
+
+- `Connected` status appears
+- `Last ping` shows a non-empty latency value
+- connection logs show probe, socket open, ping send, and pong receive
+- navigation logs show route request, first instruction, and mapped command
+- VLM screen shows:
+  - latest frame preview
+  - raw model output
+  - hazard tags
+  - frame age
+
+Acceptable result if ESP32 is disconnected:
+
+- app still connects to Pi
+- ping still works
+- telemetry still arrives
+- Pi status message may mention ESP32 serial link unavailable
+
+Pass criteria:
+
+- Phone connects to Pi over Wi-Fi.
+- `Send test ping to Pi` returns a round-trip time.
+- App receives telemetry updates from Pi.
+- App destination selection produces route logs.
+- If Pi camera is enabled, the app receives camera frames and shows them in the FastVLM debug screen.
+
+Fail signals:
+
+- app stays on `Disconnected`
+- ping never returns
+- Pi log never shows app connection
+- app receives no telemetry
+- FastVLM screen never shows frame updates even though Pi camera streaming is enabled
+
 ## 8) ESP32 Sketch Upload Test
 
 Open Arduino IDE or PlatformIO and upload:

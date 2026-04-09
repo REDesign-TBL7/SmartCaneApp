@@ -15,6 +15,23 @@
 
 import Foundation
 
+struct DebugLogEntry: Identifiable, Hashable {
+    let id = UUID()
+    let timestamp = Date()
+    let subsystem: String
+    let message: String
+
+    var timestampLabel: String {
+        Self.formatter.string(from: timestamp)
+    }
+
+    private static let formatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss.SSS"
+        return formatter
+    }()
+}
+
 /// A simple enum that describes the cane connection state in human-readable form.
 enum CaneConnectionStatus: String, Codable {
     case disconnected = "Disconnected"
@@ -111,6 +128,7 @@ struct OutboundCaneMessage: Codable {
     let vlmSummary: String?
     let latitude: Double?
     let longitude: Double?
+    let debugLabel: String?
 
     static func command(_ command: NavigationCommand, instructionText: String) -> OutboundCaneMessage {
         OutboundCaneMessage(
@@ -122,7 +140,8 @@ struct OutboundCaneMessage: Codable {
             heartbeat: nil,
             vlmSummary: nil,
             latitude: nil,
-            longitude: nil
+            longitude: nil,
+            debugLabel: nil
         )
     }
 
@@ -136,7 +155,23 @@ struct OutboundCaneMessage: Codable {
             heartbeat: true,
             vlmSummary: vlmSummary,
             latitude: latitude,
-            longitude: longitude
+            longitude: longitude,
+            debugLabel: nil
+        )
+    }
+
+    static func debugPing(label: String) -> OutboundCaneMessage {
+        OutboundCaneMessage(
+            type: "DEBUG_PING",
+            protocolVersion: 1,
+            timestampMs: Self.nowMs,
+            command: nil,
+            instructionText: nil,
+            heartbeat: nil,
+            vlmSummary: nil,
+            latitude: nil,
+            longitude: nil,
+            debugLabel: label
         )
     }
 
@@ -162,6 +197,12 @@ struct InboundTelemetryMessage: Codable {
     let statusMessage: String?
     let faultCode: CaneFaultCode?
     let timestampMs: Int64?
+}
+
+struct InboundDebugPongMessage: Codable {
+    let type: String
+    let timestampMs: Int64?
+    let echo: String?
 }
 
 struct InboundFrameMessage: Codable {

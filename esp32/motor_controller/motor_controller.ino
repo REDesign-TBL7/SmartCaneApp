@@ -34,6 +34,17 @@
 #define M3_IN3 14
 #define M3_EN  15
 
+// Ultrasonic sensors
+//
+// TODO: Replace these placeholder pins with the actual ESP32 wiring used on
+// your motor unit. Leave a trigger/echo pair as -1 to disable that sensor.
+#define US1_TRIG -1
+#define US1_ECHO -1
+#define US2_TRIG -1
+#define US2_ECHO -1
+#define US3_TRIG -1
+#define US3_ECHO -1
+
 // =========================
 // TUNING
 // =========================
@@ -63,20 +74,32 @@ struct MotorDirections {
   int m3;
 };
 
+struct UltrasonicPins {
+  int trigger;
+  int echo;
+};
+
 MotorPins motor1 = { M1_IN1, M1_IN2, M1_IN3, M1_EN };
 MotorPins motor2 = { M2_IN1, M2_IN2, M2_IN3, M2_EN };
 MotorPins motor3 = { M3_IN1, M3_IN2, M3_IN3, M3_EN };
+UltrasonicPins ultrasonicSensors[] = {
+  { US1_TRIG, US1_ECHO },
+  { US2_TRIG, US2_ECHO },
+  { US3_TRIG, US3_ECHO }
+};
 
 CaneCommand activeCommand = CMD_STOP;
 String serialLine = "";
 int currentStep = 0;
 unsigned long lastStepAtMs = 0;
 unsigned long lastMotorImuTelemetryAtMs = 0;
+unsigned long lastUltrasonicTelemetryAtMs = 0;
 
 bool motorImuAvailable = false;  // TODO: Set true after wiring the real motor-unit IMU.
 float motorImuHeadingDegrees = 0.0;
 float motorImuPitchDegrees = 0.0;
 float motorImuRollDegrees = 0.0;
+float nearestObstacleCm = -1.0;
 
 // These directions mirror the old Pi inverse-kinematics signs:
 // FORWARD: motor 1 forward, motors 2 and 3 reverse
@@ -273,12 +296,64 @@ void sendMotorImuTelemetry() {
   Serial.println(motorImuRollDegrees, 2);
 }
 
+float readSensorDistanceCm(UltrasonicPins sensor) {
+  if (sensor.trigger < 0 || sensor.echo < 0) {
+    return -1.0;
+  }
+
+  digitalWrite(sensor.trigger, LOW);
+  delayMicroseconds(2);
+  digitalWrite(sensor.trigger, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(sensor.trigger, LOW);
+
+  unsigned long durationMicros = pulseIn(sensor.echo, HIGH, 30000);
+  if (durationMicros == 0) {
+    return -1.0;
+  }
+
+  return (durationMicros * 0.0343f) / 2.0f;
+}
+
+void updateUltrasonicSensors() {
+  float bestDistance = -1.0;
+  for (UltrasonicPins sensor : ultrasonicSensors) {
+    float candidate = readSensorDistanceCm(sensor);
+    if (candidate <= 0) {
+      continue;
+    }
+
+    if (bestDistance < 0 || candidate < bestDistance) {
+      bestDistance = candidate;
+    }
+  }
+
+  nearestObstacleCm = bestDistance;
+}
+
+void sendUltrasonicTelemetry() {
+  Serial.print("ULTRASONIC ");
+  Serial.println(nearestObstacleCm, 2);
+}
+
 void setupMotorPins(MotorPins motor) {
   pinMode(motor.in1, OUTPUT);
   pinMode(motor.in2, OUTPUT);
   pinMode(motor.in3, OUTPUT);
   pinMode(motor.en, OUTPUT);
   digitalWrite(motor.en, HIGH);
+}
+
+void setupUltrasonicPins() {
+  for (UltrasonicPins sensor : ultrasonicSensors) {
+    if (sensor.trigger < 0 || sensor.echo < 0) {
+      continue;
+    }
+
+    pinMode(sensor.trigger, OUTPUT);
+    pinMode(sensor.echo, INPUT);
+    digitalWrite(sensor.trigger, LOW);
+  }
 }
 
 void setup() {
@@ -288,6 +363,7 @@ void setup() {
   setupMotorPins(motor1);
   setupMotorPins(motor2);
   setupMotorPins(motor3);
+  setupUltrasonicPins();
 
   allOff();
   delay(300);
@@ -301,11 +377,16 @@ void setup() {
 void loop() {
   handleSerialInput();
   updateMotorUnitImu();
+  updateUltrasonicSensors();
 
   unsigned long nowMs = millis();
   if (nowMs - lastMotorImuTelemetryAtMs >= 200) {
     lastMotorImuTelemetryAtMs = nowMs;
     sendMotorImuTelemetry();
+  }
+  if (nowMs - lastUltrasonicTelemetryAtMs >= 120) {
+    lastUltrasonicTelemetryAtMs = nowMs;
+    sendUltrasonicTelemetry();
   }
 
   if (activeCommand == CMD_STOP) {

@@ -4,6 +4,8 @@ import Network
 @MainActor
 final class CaneConnectionManager: ObservableObject {
     @Published var caneState = CaneState()
+    @Published var debugLogEntries: [DebugLogEntry] = []
+    @Published var lastPingRoundTripMs: Int?
 
     private struct EndpointProfile {
         let mode: CaneNetworkMode
@@ -52,6 +54,7 @@ final class CaneConnectionManager: ObservableObject {
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var latestPhoneLocation: (latitude: Double, longitude: Double)?
+    private var pendingPingStartedAt: Date?
 
     private let pathMonitor = NWPathMonitor()
     private let pathQueue = DispatchQueue(label: "smartcane.path.monitor")
@@ -64,6 +67,7 @@ final class CaneConnectionManager: ObservableObject {
         caneState.currentNavigationCommand = .stop
         caneState.obstacleMessage = "No obstacles detected"
         caneState.statusMessage = "Waiting for Raspberry Pi connection"
+        appendDebugLog("connection", "Manager initialized")
 
         pathMonitor.pathUpdateHandler = { [weak self] path in
             guard let self else {
@@ -73,6 +77,10 @@ final class CaneConnectionManager: ObservableObject {
             Task { @MainActor in
                 self.isWiFiActive = path.usesInterfaceType(.wifi)
                 self.isCellularActive = path.usesInterfaceType(.cellular)
+                self.appendDebugLog(
+                    "network",
+                    "Path updated. Wi-Fi \(self.isWiFiActive ? "up" : "down"), cellular \(self.isCellularActive ? "up" : "down")"
+                )
             }
         }
         pathMonitor.start(queue: pathQueue)
@@ -88,17 +96,20 @@ final class CaneConnectionManager: ObservableObject {
 
     func connectToCane() {
         guard webSocketTask == nil, connectTask == nil else {
+            appendDebugLog("connection", "Connect ignored because a session is already active")
             return
         }
 
         guard isWiFiActive else {
             caneState.connectionStatus = .disconnected
             caneState.statusMessage = "Connect to cane Wi-Fi first. Cellular remains available for internet only."
+            appendDebugLog("connection", "Connect blocked because Wi-Fi is not active")
             return
         }
 
         caneState.connectionStatus = .connecting
         caneState.statusMessage = "Searching for cane endpoint over Wi-Fi"
+        appendDebugLog("connection", "Starting connection probe for \(connectionCandidates().count) endpoint(s)")
 
         connectTask = Task { [weak self] in
             guard let self else {
@@ -108,16 +119,20 @@ final class CaneConnectionManager: ObservableObject {
             let endpoints = self.connectionCandidates()
             for endpoint in endpoints {
                 self.caneState.statusMessage = "Probing \(endpoint.label) at \(endpoint.host):\(endpoint.port)"
+                self.appendDebugLog("probe", "Probing \(endpoint.host):\(endpoint.port) for \(endpoint.label)")
                 let reachable = await self.probeEndpoint(endpoint)
                 if reachable {
+                    self.appendDebugLog("probe", "Probe succeeded for \(endpoint.host):\(endpoint.port)")
                     self.openWebSocket(to: endpoint)
                     self.connectTask = nil
                     return
                 }
+                self.appendDebugLog("probe", "Probe failed for \(endpoint.host):\(endpoint.port)")
             }
 
             self.caneState.connectionStatus = .disconnected
             self.caneState.statusMessage = "No reachable cane endpoint found on Wi-Fi."
+            self.appendDebugLog("connection", "All cane endpoint probes failed")
             self.connectTask = nil
         }
     }
@@ -128,9 +143,11 @@ final class CaneConnectionManager: ObservableObject {
             disconnectFromCane()
         }
         caneState.statusMessage = "Network mode set to \(mode.rawValue). \(networkModeDescription)"
+        appendDebugLog("network", "Selected mode \(mode.rawValue)")
     }
 
     func disconnectFromCane() {
+        appendDebugLog("connection", "Disconnect requested")
         connectTask?.cancel()
         connectTask = nil
 
@@ -147,6 +164,8 @@ final class CaneConnectionManager: ObservableObject {
         caneState.connectionStatus = .disconnected
         caneState.currentNavigationCommand = .stop
         caneState.statusMessage = "Wi-Fi cane link closed"
+        pendingPingStartedAt = nil
+        lastPingRoundTripMs = nil
     }
 
     func sendNavigationCommand(_ command: NavigationCommand, instructionText: String) {
@@ -159,7 +178,15 @@ final class CaneConnectionManager: ObservableObject {
         sendEffectiveNavigationCommand(command, instructionText: instructionText)
     }
 
+    func sendDebugPing() {
+        let label = "phone_ping_\(Int(Date().timeIntervalSince1970))"
+        pendingPingStartedAt = Date()
+        appendDebugLog("ping", "Sending DEBUG_PING \(label)")
+        send(.debugPing(label: label))
+    }
+
     func sendSafetyOverrideCommand(_ command: NavigationCommand, instructionText: String) {
+        appendDebugLog("safety", "Safety override sending \(command.rawValue): \(instructionText)")
         sendRawNavigationCommand(command, instructionText: instructionText)
         isSafetyOverrideActive = true
     }
@@ -171,8 +198,10 @@ final class CaneConnectionManager: ObservableObject {
 
         isVisionSafetyOverrideActive = isActive
         if isActive {
+            appendDebugLog("vision", "Vision safety override activated")
             sendSafetyOverrideCommand(.stop, instructionText: reason)
         } else {
+            appendDebugLog("vision", "Vision safety override cleared")
             reevaluateSafetyOverride()
         }
     }
@@ -193,8 +222,10 @@ final class CaneConnectionManager: ObservableObject {
 
         isSafetyOverrideActive = false
         if let savedRouteCommand {
+            appendDebugLog("safety", "Resuming saved route command \(savedRouteCommand.command.rawValue)")
             sendRawNavigationCommand(savedRouteCommand.command, instructionText: savedRouteCommand.instructionText)
         } else {
+            appendDebugLog("safety", "Safety override cleared with no saved route command")
             sendRawNavigationCommand(.stop, instructionText: "Safety override cleared")
         }
     }
@@ -226,6 +257,7 @@ final class CaneConnectionManager: ObservableObject {
         caneState.currentNavigationCommand = command
         caneState.currentInstruction = instructionText
 
+        appendDebugLog("command", "Sending \(command.rawValue): \(instructionText)")
         send(.command(command, instructionText: instructionText))
         caneState.statusMessage = "Sent Wi-Fi direction: \(command.rawValue)"
     }
@@ -273,10 +305,12 @@ final class CaneConnectionManager: ObservableObject {
 
                 do {
                     let message = try await task.receive()
+                    self.appendDebugLog("socket", "Inbound message received")
                     self.handleInboundMessage(message)
                 } catch {
                     self.caneState.faultCode = .heartbeatTimeout
                     self.caneState.statusMessage = "Connection dropped: \(error.localizedDescription)"
+                    self.appendDebugLog("socket", "Receive failed: \(error.localizedDescription)")
                     self.disconnectFromCane()
                     return
                 }
@@ -287,22 +321,35 @@ final class CaneConnectionManager: ObservableObject {
     private func handleInboundMessage(_ message: URLSessionWebSocketTask.Message) {
         switch message {
         case .data(let data):
+            appendDebugLog("socket", "Inbound binary payload \(data.count) bytes")
             if let framePacket = try? decoder.decode(InboundFrameMessage.self, from: data),
                framePacket.type == "CAMERA_FRAME",
                let base64 = framePacket.jpegBase64,
                let frameData = Data(base64Encoded: base64) {
+                appendDebugLog("frame", "Received camera frame \(frameData.count) bytes")
                 frameHandler?(frameData)
                 return
             }
 
             handleTelemetryData(data)
         case .string(let text):
+            appendDebugLog("socket", "Inbound text payload \(text.count) chars")
             let data = Data(text.utf8)
+
+            if let debugPong = try? decoder.decode(InboundDebugPongMessage.self, from: data),
+               debugPong.type == "DEBUG_PONG" {
+                let roundTripMs = pendingPingStartedAt.map { Int(Date().timeIntervalSince($0) * 1000) }
+                lastPingRoundTripMs = roundTripMs
+                pendingPingStartedAt = nil
+                appendDebugLog("ping", "Received DEBUG_PONG \(debugPong.echo ?? "") RTT \(roundTripMs ?? -1) ms")
+                return
+            }
 
             if let framePacket = try? decoder.decode(InboundFrameMessage.self, from: data),
                framePacket.type == "CAMERA_FRAME",
                let base64 = framePacket.jpegBase64,
                let frameData = Data(base64Encoded: base64) {
+                appendDebugLog("frame", "Received camera frame \(frameData.count) bytes")
                 frameHandler?(frameData)
                 return
             }
@@ -315,8 +362,14 @@ final class CaneConnectionManager: ObservableObject {
 
     private func handleTelemetryData(_ data: Data) {
         guard let telemetry = try? decoder.decode(InboundTelemetryMessage.self, from: data) else {
+            appendDebugLog("telemetry", "Failed to decode inbound telemetry")
             return
         }
+
+        appendDebugLog(
+            "telemetry",
+            "Obstacle \(telemetry.obstacleDistanceCm.map { String(Int($0)) } ?? "nil") cm, fault \(telemetry.faultCode?.rawValue ?? "nil"), gps \(telemetry.gpsFixStatus?.rawValue ?? "nil")"
+        )
 
         if let obstacleDistanceCm = telemetry.obstacleDistanceCm {
             caneState.nearestObstacleCm = obstacleDistanceCm
@@ -385,6 +438,7 @@ final class CaneConnectionManager: ObservableObject {
         guard let url = URL(string: "ws://\(endpoint.host):\(endpoint.port)/ws") else {
             caneState.connectionStatus = .disconnected
             caneState.statusMessage = "Invalid cane endpoint URL"
+            appendDebugLog("connection", "Invalid WebSocket URL for \(endpoint.host):\(endpoint.port)")
             return
         }
 
@@ -398,6 +452,7 @@ final class CaneConnectionManager: ObservableObject {
         let task = session.webSocketTask(with: url)
         webSocketTask = task
         task.resume()
+        appendDebugLog("socket", "Opened WebSocket to \(url.absoluteString)")
 
         caneState.connectionStatus = .connected
         caneState.statusMessage = connectionStatusSummary(connectedTo: endpoint)
@@ -463,13 +518,17 @@ final class CaneConnectionManager: ObservableObject {
 
     private func send(_ payload: OutboundCaneMessage) {
         guard let task = webSocketTask else {
+            appendDebugLog("socket", "Send dropped because WebSocket is not connected")
             return
         }
 
         guard let encoded = try? encoder.encode(payload),
               let text = String(data: encoded, encoding: .utf8) else {
+            appendDebugLog("socket", "Failed to encode outbound payload \(payload.type)")
             return
         }
+
+        appendDebugLog("socket", "Sending \(payload.type): \(text)")
 
         task.send(.string(text)) { [weak self] error in
             guard let self else {
@@ -479,8 +538,16 @@ final class CaneConnectionManager: ObservableObject {
             if let error {
                 Task { @MainActor in
                     self.caneState.statusMessage = "Send failed: \(error.localizedDescription)"
+                    self.appendDebugLog("socket", "Send failed: \(error.localizedDescription)")
                 }
             }
+        }
+    }
+
+    private func appendDebugLog(_ subsystem: String, _ message: String) {
+        debugLogEntries.insert(DebugLogEntry(subsystem: subsystem, message: message), at: 0)
+        if debugLogEntries.count > 200 {
+            debugLogEntries.removeLast(debugLogEntries.count - 200)
         }
     }
 }

@@ -52,6 +52,16 @@
     },
     {
       "type": "object",
+      "required": ["type", "protocolVersion", "timestampMs", "debugLabel"],
+      "properties": {
+        "type": { "const": "DEBUG_PING" },
+        "protocolVersion": { "const": 1 },
+        "timestampMs": { "type": "integer" },
+        "debugLabel": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
       "required": [
         "type",
         "protocolVersion",
@@ -78,6 +88,15 @@
         "gpsFixStatus": { "$ref": "#/definitions/gpsFixStatus" },
         "faultCode": { "$ref": "#/definitions/faultCode" },
         "statusMessage": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "timestampMs"],
+      "properties": {
+        "type": { "const": "DEBUG_PONG" },
+        "timestampMs": { "type": "integer" },
+        "echo": { "type": ["string", "null"] }
       }
     },
     {

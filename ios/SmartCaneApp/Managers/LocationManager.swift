@@ -111,6 +111,7 @@ final class LocationManager: NSObject, ObservableObject {
 
     @Published var favoritePlaces: [SavedPlace] = []
     @Published var recentRoutes: [NavigationHistoryItem] = []
+    @Published var debugLogEntries: [DebugLogEntry] = []
 
     private let locationManager = CLLocationManager()
     private let searchCompleter = MKLocalSearchCompleter()
@@ -173,6 +174,7 @@ final class LocationManager: NSObject, ObservableObject {
         searchCompleter.region = searchRegion(around: defaultSearchCenter)
 
         bindProfileData()
+        appendDebugLog("location", "Location manager initialized")
         requestLocationAccess()
     }
 
@@ -187,6 +189,7 @@ final class LocationManager: NSObject, ObservableObject {
     /// Starts the normal iOS location permission flow.
     func requestLocationAccess() {
         let status = locationManager.authorizationStatus
+        appendDebugLog("location", "Authorization status \(status.rawValue)")
 
         switch status {
         case .notDetermined:
@@ -222,10 +225,12 @@ final class LocationManager: NSObject, ObservableObject {
             searchResults = []
 
             let resolvedDestination = try await resolveSearchResult(result)
+            appendDebugLog("search", "Confirmed result \(resolvedDestination.displayName)")
             activateNavigation(to: resolvedDestination)
             await updateRouteForActiveDestination()
             return true
         } catch {
+            appendDebugLog("search", "Failed to confirm result \(result.displayName): \(error.localizedDescription)")
             return false
         }
     }
@@ -255,6 +260,7 @@ final class LocationManager: NSObject, ObservableObject {
         )
 
         searchText = destination.displayName
+        appendDebugLog("favorites", "Selected favorite \(place.displayTitle)")
         activateNavigation(to: destination)
 
         Task {
@@ -272,6 +278,7 @@ final class LocationManager: NSObject, ObservableObject {
         )
 
         searchText = destination.name
+        appendDebugLog("recent", "Selected recent route \(route.destinationName)")
         activateNavigation(to: destination)
 
         Task {
@@ -314,10 +321,12 @@ final class LocationManager: NSObject, ObservableObject {
                 longitude: coordinate.longitude
             )
 
+            appendDebugLog("search", "Voice query resolved \(trimmedQuery) to \(destination.displayName)")
             activateNavigation(to: destination)
             await updateRouteForActiveDestination()
             return "Starting navigation to \(destination.name)."
         } catch {
+            appendDebugLog("search", "Voice query failed for \(trimmedQuery)")
             return "I could not find \(trimmedQuery). Please try another place name."
         }
     }
@@ -338,6 +347,7 @@ final class LocationManager: NSObject, ObservableObject {
 
     /// Returns the app to the empty navigation state.
     func clearNavigation() {
+        appendDebugLog("navigation", "Cleared active navigation")
         activeDestination = nil
         currentInstruction = "No active navigation"
         currentRouteSummary = "Route pending"
@@ -462,6 +472,7 @@ final class LocationManager: NSObject, ObservableObject {
         currentInstruction = "Navigating to \(destination.name)"
         currentRouteSummary = "Route pending"
         hasRecordedDistanceForCurrentTrip = false
+        appendDebugLog("navigation", "Activated destination \(destination.displayName)")
         profileManager.incrementTripCount()
         insertRecentRoute(for: destination)
     }
@@ -473,6 +484,7 @@ final class LocationManager: NSObject, ObservableObject {
 
         guard let currentLocationCoordinate else {
             currentInstruction = "Waiting for your current location."
+            appendDebugLog("routing", "Route update waiting for current location")
             return
         }
 
@@ -482,6 +494,7 @@ final class LocationManager: NSObject, ObservableObject {
         // This app currently uses MapKit directions, not the Google Maps Directions API.
         // Keep walking mode explicit on every directions request for cane guidance.
         request.transportType = .walking
+        appendDebugLog("routing", "Requesting walking route to \(destination.displayName)")
 
         do {
             let response = try await MKDirections(request: request).calculate()
@@ -495,9 +508,12 @@ final class LocationManager: NSObject, ObservableObject {
             if let firstInstruction = route.steps.first(where: { !$0.instructions.isEmpty })?.instructions {
                 currentInstruction = firstInstruction
                 let command = commandForInstruction(firstInstruction)
+                appendDebugLog("routing", "First step: \(firstInstruction)")
+                appendDebugLog("routing", "Mapped step to command \(command.rawValue)")
                 fusionManager.applyFusedCommand(baseCommand: command, instructionText: firstInstruction)
             } else {
                 currentInstruction = "Navigating to \(destination.name)"
+                appendDebugLog("routing", "No explicit route step, defaulting to FORWARD")
                 fusionManager.applyFusedCommand(baseCommand: .forward, instructionText: currentInstruction)
             }
 
@@ -520,6 +536,7 @@ final class LocationManager: NSObject, ObservableObject {
         } catch {
             currentRouteSummary = "Route pending"
             currentInstruction = "Route unavailable from current location."
+            appendDebugLog("routing", "Route request failed for \(destination.displayName): \(error.localizedDescription)")
             fusionManager.applyFusedCommand(baseCommand: .stop, instructionText: currentInstruction)
         }
     }
@@ -653,6 +670,10 @@ extension LocationManager: CLLocationManagerDelegate {
         }
 
         currentLocationCoordinate = latestLocation.coordinate
+        appendDebugLog(
+            "location",
+            "Updated phone location to \(String(format: "%.5f", latestLocation.coordinate.latitude)), \(String(format: "%.5f", latestLocation.coordinate.longitude))"
+        )
         connectionManager.updatePhoneLocation(
             latitude: latestLocation.coordinate.latitude,
             longitude: latestLocation.coordinate.longitude
@@ -670,6 +691,7 @@ extension LocationManager: CLLocationManagerDelegate {
         if activeDestination != nil {
             currentInstruction = "Could not update your location."
         }
+        appendDebugLog("location", "Location update failed: \(error.localizedDescription)")
     }
 }
 
@@ -683,14 +705,25 @@ extension LocationManager: MKLocalSearchCompleterDelegate {
                 completion: result
             )
         }
+        appendDebugLog("search", "Completer returned \(searchResults.count) result(s)")
     }
 
     func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
         searchResults = []
+        appendDebugLog("search", "Completer failed: \(error.localizedDescription)")
     }
 }
 
 private enum LocationResolutionError: Error {
     case noResult
     case noRoute
+}
+
+private extension LocationManager {
+    func appendDebugLog(_ subsystem: String, _ message: String) {
+        debugLogEntries.insert(DebugLogEntry(subsystem: subsystem, message: message), at: 0)
+        if debugLogEntries.count > 160 {
+            debugLogEntries.removeLast(debugLogEntries.count - 160)
+        }
+    }
 }

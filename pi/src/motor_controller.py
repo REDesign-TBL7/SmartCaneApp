@@ -7,6 +7,7 @@ the final LEFT / RIGHT / FORWARD / STOP command to the ESP32 over serial.
 """
 
 import os
+import logging
 from dataclasses import dataclass
 
 try:
@@ -22,6 +23,8 @@ DEFAULT_SERIAL_PORTS = (
     "/dev/ttyACM0",
     "/dev/serial0",
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -40,6 +43,11 @@ class MotorIMUTelemetry:
     roll_degrees: float | None = None
 
 
+@dataclass
+class UltrasonicTelemetry:
+    nearest_obstacle_cm: float = -1.0
+
+
 class MotorController:
     def __init__(self) -> None:
         self.serial_port_path = os.getenv("SMARTCANE_ESP32_PORT")
@@ -47,9 +55,11 @@ class MotorController:
         self.serial_connection = None
         self.last_command = MotorCommand(command="STOP", sent_to_esp32=False)
         self.latest_motor_imu = MotorIMUTelemetry()
+        self.latest_ultrasonic = UltrasonicTelemetry()
         self.status_message = "ESP32 motor serial link not connected"
 
         self._connect_serial()
+        logger.info("Motor controller initialized: %s", self.status_message)
 
     def stop(self) -> None:
         self.apply_discrete_command("STOP")
@@ -60,10 +70,12 @@ class MotorController:
 
         # Avoid spamming the ESP32 every 0.2 seconds while the same command is active.
         if command == self.last_command.command and self.last_command.sent_to_esp32:
+            logger.debug("Skipping duplicate motor command %s", command)
             return self.last_command
 
         was_sent = self._send_command_to_esp32(command)
         self.last_command = MotorCommand(command=command, sent_to_esp32=was_sent)
+        logger.debug("Motor command result command=%s sent=%s", command, was_sent)
         return self.last_command
 
     def poll_motor_imu(self) -> MotorIMUTelemetry:
@@ -74,6 +86,7 @@ class MotorController:
         """
         if self.serial_connection is None:
             self.latest_motor_imu = MotorIMUTelemetry()
+            self.latest_ultrasonic = UltrasonicTelemetry()
             return self.latest_motor_imu
 
         try:
@@ -84,6 +97,8 @@ class MotorController:
             self.status_message = f"ESP32 serial read failed: {error}"
             self.serial_connection = None
             self.latest_motor_imu = MotorIMUTelemetry()
+            self.latest_ultrasonic = UltrasonicTelemetry()
+            logger.exception("ESP32 serial read failed")
 
         return self.latest_motor_imu
 
@@ -112,9 +127,11 @@ class MotorController:
                 write_timeout=0.1,
             )
             self.status_message = f"ESP32 motor link active on {port}"
+            logger.info("ESP32 serial connected on %s at %s baud", port, self.baud_rate)
         except serial.SerialException as error:
             self.serial_connection = None
             self.status_message = f"ESP32 serial connection failed: {error}"
+            logger.exception("ESP32 serial connection failed")
 
     def _send_command_to_esp32(self, command: str) -> bool:
         if self.serial_connection is None:
@@ -125,10 +142,12 @@ class MotorController:
             self.serial_connection.write(f"{command}\n".encode("utf-8"))
             self.serial_connection.flush()
             self.status_message = f"Sent motor command to ESP32: {command}"
+            logger.info("Sent motor command to ESP32: %s", command)
             return True
         except serial.SerialException as error:
             self.status_message = f"ESP32 serial write failed: {error}"
             self.serial_connection = None
+            logger.exception("ESP32 serial write failed")
             return False
 
     def _first_existing_port(self) -> str | None:
@@ -147,10 +166,16 @@ class MotorController:
             return
 
         if line.startswith("OK "):
+            logger.debug("ESP32 ack: %s", line)
             return
 
         if line.startswith("MOTOR_IMU "):
             self._parse_motor_imu_line(line)
+            return
+
+        if line.startswith("ULTRASONIC "):
+            self._parse_ultrasonic_line(line)
+            return
 
     def _parse_motor_imu_line(self, line: str) -> None:
         parts = line.split()
@@ -160,6 +185,7 @@ class MotorController:
         available = parts[1] == "1"
         if not available:
             self.latest_motor_imu = MotorIMUTelemetry(available=False)
+            logger.debug("ESP32 motor IMU unavailable")
             return
 
         try:
@@ -169,5 +195,25 @@ class MotorController:
                 pitch_degrees=float(parts[3]),
                 roll_degrees=float(parts[4]),
             )
+            logger.debug(
+                "ESP32 motor IMU heading=%s pitch=%s roll=%s",
+                self.latest_motor_imu.heading_degrees,
+                self.latest_motor_imu.pitch_degrees,
+                self.latest_motor_imu.roll_degrees,
+            )
         except ValueError:
             self.latest_motor_imu = MotorIMUTelemetry(available=False)
+            logger.warning("Failed to parse ESP32 motor IMU line: %s", line)
+
+    def _parse_ultrasonic_line(self, line: str) -> None:
+        parts = line.split()
+        if len(parts) != 2:
+            logger.warning("Failed to parse ESP32 ultrasonic line: %s", line)
+            return
+
+        try:
+            self.latest_ultrasonic = UltrasonicTelemetry(nearest_obstacle_cm=float(parts[1]))
+            logger.debug("ESP32 ultrasonic nearest obstacle=%s", self.latest_ultrasonic.nearest_obstacle_cm)
+        except ValueError:
+            self.latest_ultrasonic = UltrasonicTelemetry()
+            logger.warning("Failed to parse ESP32 ultrasonic distance: %s", line)

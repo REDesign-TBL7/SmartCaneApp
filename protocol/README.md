@@ -7,8 +7,13 @@ Shared message schema between iOS app and Raspberry Pi runtime.
 - Versioning: increment `protocolVersion` for breaking changes
 
 Message families:
-- `DISCRETE_CMD` and `HEARTBEAT` from iOS to Pi
-- `TELEMETRY` and `CAMERA_FRAME` from Pi to iOS
+- `DISCRETE_CMD`, `HEARTBEAT`, and `DEBUG_PING` from iOS to Pi
+- `TELEMETRY`, `CAMERA_FRAME`, and `DEBUG_PONG` from Pi to iOS
+
+Debug connectivity:
+- `DEBUG_PING` lets the app verify the phone-to-Pi WebSocket path end to end.
+- Pi responds immediately with `DEBUG_PONG`, echoing the `debugLabel`.
+- App can use this to show round-trip time and confirm command transport health.
 
 Motor command bridge:
 - After Pi safety checks, the Pi forwards `LEFT`, `RIGHT`, `FORWARD`, or `STOP`

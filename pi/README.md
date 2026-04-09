@@ -1,8 +1,8 @@
 # Pi Runtime
 
-Python runtime for Raspberry Pi Zero 2W cane comms, HC-SR04 ultrasonic sensing,
-handle-mounted MPU9250 IMU data for camera deblur, Pi camera frame streaming,
-and ESP32 motor-command forwarding.
+Python runtime for Raspberry Pi Zero 2W cane comms, handle-mounted MPU9250 IMU
+data for camera deblur, Pi camera frame streaming, and ESP32 motor-command /
+sensor forwarding.
 
 ## Run
 
@@ -45,15 +45,18 @@ STOP
 
 The ESP32 sketch is in `esp32/motor_controller/motor_controller.ino`.
 
-The Pi also listens for ESP32 motor-unit IMU telemetry lines:
+The Pi also listens for ESP32 telemetry lines:
 
 ```text
 MOTOR_IMU <available> <headingDegrees> <pitchDegrees> <rollDegrees>
+ULTRASONIC <nearestObstacleCm>
 ```
 
-That motor-unit heading is forwarded to iOS as `motorImuHeadingDegrees`. The Pi's
-own handle IMU is forwarded separately as `handleImu...` fields for future camera
-deblur/stabilization.
+That motor-unit heading is forwarded to iOS as `motorImuHeadingDegrees`. The ESP32
+also owns ultrasonic obstacle sensing for the demo and forwards the nearest
+distance as `obstacleDistanceCm`. The Pi's own handle IMU remains available as a
+backup and is still forwarded separately as `handleImu...` fields for future
+camera deblur/stabilization.
 
 ## AP vs hotspot
 
@@ -71,9 +74,7 @@ Provisioning scripts are included in `infra/pi-network/`:
 
 ## Hardware mapping
 
-- Ultrasonic trigger/echo pins (BOARD): `(7,11)`, `(15,16)`, `(22,23)`
-- Handle MPU9250 over I2C bus 1 at address `0x68`
+- Handle MPU9250 over I2C bus 1 at address `0x68` on Pi, kept as backup for deblur
 - ESP32 handles motor DRV8313 pins in `esp32/motor_controller/motor_controller.ino`
 - ESP32 motor unit owns the motor-control IMU
-
-Ultrasonic sensing still uses `GPIO.setmode(GPIO.BOARD)` to match the pin mapping above.
+- ESP32 also owns the ultrasonic trigger/echo wiring for the demo
