@@ -196,7 +196,7 @@ python3 -m pip install websockets
 Run the Pi runtime:
 
 ```bash
-cd /opt/smart-cane/pi
+cd /path/to/your/repo/pi
 source .venv/bin/activate
 python src/main.py
 ```
@@ -478,7 +478,7 @@ export SMARTCANE_ESP32_BAUD=115200
 Run Pi runtime:
 
 ```bash
-cd /opt/smart-cane/pi
+cd /path/to/your/repo/pi
 source .venv/bin/activate
 python src/main.py
 ```

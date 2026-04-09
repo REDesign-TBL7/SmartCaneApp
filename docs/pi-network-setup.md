@@ -10,7 +10,7 @@ This guide explains the supported onboarding and run-time networking flow.
 ## Prerequisites
 
 - Raspberry Pi OS with sudo access
-- Repo checked out on Pi (recommended path: `/opt/smart-cane`)
+- Repo checked out on Pi
 - Wi-Fi adapter interface `wlan0` (default)
 
 ## 1) First-time onboarding
@@ -18,7 +18,7 @@ This guide explains the supported onboarding and run-time networking flow.
 1. Install the Pi services:
 
 ```bash
-cd /opt/smart-cane
+cd /path/to/your/repo
 python3 -m venv pi/.venv
 source pi/.venv/bin/activate
 pip install -r pi/requirements.txt
@@ -46,7 +46,7 @@ sudo infra/pi-network/install_runtime_service.sh
 ## 2) Configure phone hotspot client mode manually
 
 ```bash
-cd /opt/smart-cane
+cd /path/to/your/repo
 chmod +x infra/pi-network/setup_hotspot_client_mode.sh
 sudo infra/pi-network/setup_hotspot_client_mode.sh --ssid "<iPhone hotspot name>" --psk "<hotspot password>"
 ```
@@ -70,12 +70,14 @@ Fallback:
 ## 3) Check active mode
 
 ```bash
-cd /opt/smart-cane
+cd /path/to/your/repo
 chmod +x infra/pi-network/check_network_mode.sh
 infra/pi-network/check_network_mode.sh
 ```
 
 The script reads `/etc/smartcane/network_mode` so you can verify hotspot mode quickly.
+
+The installer derives the repo root from the script location, so the checkout does not need to live in `/opt/smart-cane`.
 
 ## Troubleshooting
 

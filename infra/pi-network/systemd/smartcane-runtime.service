@@ -5,8 +5,8 @@ Wants=network-online.target smartcane-network-bootstrap.service
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/smart-cane/pi
-ExecStart=/opt/smart-cane/pi/.venv/bin/python /opt/smart-cane/pi/src/main.py
+WorkingDirectory=__SMARTCANE_REPO_ROOT__/pi
+ExecStart=__SMARTCANE_REPO_ROOT__/pi/.venv/bin/python __SMARTCANE_REPO_ROOT__/pi/src/main.py
 Restart=always
 RestartSec=2
 User=pi
