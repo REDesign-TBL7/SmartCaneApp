@@ -7,8 +7,14 @@ Shared message schema between iOS app and Raspberry Pi runtime.
 - Versioning: increment `protocolVersion` for breaking changes
 
 Message families:
-- `DISCRETE_CMD`, `HEARTBEAT`, and `DEBUG_PING` from iOS to Pi
-- `TELEMETRY`, `CAMERA_FRAME`, and `DEBUG_PONG` from Pi to iOS
+- `PAIR_HELLO`, `DISCRETE_CMD`, `HEARTBEAT`, and `DEBUG_PING` from iOS to Pi
+- `PAIR_INFO`, `TELEMETRY`, `CAMERA_FRAME`, and `DEBUG_PONG` from Pi to iOS
+
+Wi-Fi pairing:
+- iOS first discovers the Pi over Bonjour / mDNS (`_smartcane._tcp`) when available.
+- iOS sends `PAIR_HELLO` when first connecting over the phone hotspot WebSocket path.
+- Pi responds with `PAIR_INFO`, including a stable device name and device ID.
+- The app stores that paired device locally so reconnecting is one tap later.
 
 Debug connectivity:
 - `DEBUG_PING` lets the app verify the phone-to-Pi WebSocket path end to end.

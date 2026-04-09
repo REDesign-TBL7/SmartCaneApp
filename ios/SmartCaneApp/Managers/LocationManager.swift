@@ -659,7 +659,7 @@ final class LocationManager: NSObject, ObservableObject {
 }
 
 @MainActor
-extension LocationManager: CLLocationManagerDelegate {
+extension LocationManager: @preconcurrency CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         requestLocationAccess()
     }
@@ -696,7 +696,7 @@ extension LocationManager: CLLocationManagerDelegate {
 }
 
 @MainActor
-extension LocationManager: MKLocalSearchCompleterDelegate {
+extension LocationManager: @preconcurrency MKLocalSearchCompleterDelegate {
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         searchResults = completer.results.map { result in
             LocationSearchResult(

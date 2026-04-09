@@ -1,0 +1,12 @@
+[Unit]
+Description=SmartCane Network Bootstrap
+Before=network-online.target smartcane-runtime.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/smart-cane/infra/pi-network/bootstrap_network_mode.sh
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

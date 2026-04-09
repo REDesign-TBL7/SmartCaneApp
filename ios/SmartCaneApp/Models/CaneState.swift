@@ -32,6 +32,18 @@ struct DebugLogEntry: Identifiable, Hashable {
     }()
 }
 
+struct PairedCaneDevice: Codable, Equatable {
+    let deviceID: String
+    let deviceName: String
+    let host: String
+    let port: String
+    let pairedAt: Date
+
+    var summaryText: String {
+        "\(deviceName) (\(deviceID))"
+    }
+}
+
 /// A simple enum that describes the cane connection state in human-readable form.
 enum CaneConnectionStatus: String, Codable {
     case disconnected = "Disconnected"
@@ -62,12 +74,6 @@ enum CaneFaultCode: String, Codable {
     case motorDriverFault = "MOTOR_DRIVER_FAULT"
     case ultrasonicFault = "ULTRASONIC_FAULT"
     case heartbeatTimeout = "HEARTBEAT_TIMEOUT"
-}
-
-enum CaneNetworkMode: String, Codable {
-    case auto = "AUTO"
-    case piAccessPoint = "PI_AP"
-    case phoneHotspot = "PHONE_HOTSPOT"
 }
 
 /// A shared model describing the latest known state of the cane.
@@ -114,8 +120,6 @@ struct CaneState: Codable {
     /// Latest cane fault code.
     var faultCode: CaneFaultCode = .none
 
-    /// Selected local transport profile for the cane link.
-    var networkMode: CaneNetworkMode = .auto
 }
 
 struct OutboundCaneMessage: Codable {
@@ -129,6 +133,7 @@ struct OutboundCaneMessage: Codable {
     let latitude: Double?
     let longitude: Double?
     let debugLabel: String?
+    let clientName: String?
 
     static func command(_ command: NavigationCommand, instructionText: String) -> OutboundCaneMessage {
         OutboundCaneMessage(
@@ -141,7 +146,8 @@ struct OutboundCaneMessage: Codable {
             vlmSummary: nil,
             latitude: nil,
             longitude: nil,
-            debugLabel: nil
+            debugLabel: nil,
+            clientName: nil
         )
     }
 
@@ -156,7 +162,8 @@ struct OutboundCaneMessage: Codable {
             vlmSummary: vlmSummary,
             latitude: latitude,
             longitude: longitude,
-            debugLabel: nil
+            debugLabel: nil,
+            clientName: nil
         )
     }
 
@@ -171,7 +178,24 @@ struct OutboundCaneMessage: Codable {
             vlmSummary: nil,
             latitude: nil,
             longitude: nil,
-            debugLabel: label
+            debugLabel: label,
+            clientName: nil
+        )
+    }
+
+    static func pairHello(clientName: String) -> OutboundCaneMessage {
+        OutboundCaneMessage(
+            type: "PAIR_HELLO",
+            protocolVersion: 1,
+            timestampMs: Self.nowMs,
+            command: nil,
+            instructionText: nil,
+            heartbeat: nil,
+            vlmSummary: nil,
+            latitude: nil,
+            longitude: nil,
+            debugLabel: nil,
+            clientName: clientName
         )
     }
 
@@ -203,6 +227,14 @@ struct InboundDebugPongMessage: Codable {
     let type: String
     let timestampMs: Int64?
     let echo: String?
+}
+
+struct InboundPairInfoMessage: Codable {
+    let type: String
+    let protocolVersion: Int?
+    let deviceID: String?
+    let deviceName: String?
+    let wsPath: String?
 }
 
 struct InboundFrameMessage: Codable {

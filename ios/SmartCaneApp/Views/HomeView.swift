@@ -16,7 +16,9 @@ struct HomeView: View {
     @EnvironmentObject private var locationManager: LocationManager
     @EnvironmentObject private var speechManager: SpeechManager
     @EnvironmentObject private var visionManager: VisionManager
+    @EnvironmentObject private var setupManager: CaneSetupManager
     @State private var showsNavigationSearch = false
+    @State private var showsSetupCane = false
 
     var body: some View {
         NavigationStack {
@@ -48,6 +50,9 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(isPresented: $showsNavigationSearch) {
                 NavigationView()
+            }
+            .sheet(isPresented: $showsSetupCane) {
+                SetupCaneView()
             }
             .onAppear {
                 speechManager.speak("Smart Cane ready. Use Read for status, or Speak for voice commands.")
@@ -104,7 +109,6 @@ struct HomeView: View {
     private var navigationSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             connectionButton
-            networkModeControl
             navigationButton
         }
         .padding(20)
@@ -150,13 +154,15 @@ struct HomeView: View {
                 connectionManager.caneState.connectionStatus.rawValue,
                 systemImage: connectionManager.caneState.connectionStatus == .connected ? "wifi" : "wifi.slash",
                 detail: connectionManager.caneState.connectionStatus == .connected
-                    ? "Tap to disconnect. \(connectionManager.activeEndpointLabel)."
-                    : "Tap to connect over Wi-Fi. \(connectionManager.networkModeDescription)"
+                    ? "Tap to disconnect from \(connectionManager.activeEndpointLabel)."
+                    : connectionManager.pairedDevice != nil
+                        ? "Tap to connect to \(connectionManager.activeEndpointLabel) over Wi-Fi."
+                        : "Tap to pair with your cane over Wi-Fi."
             )
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Connection \(connectionManager.caneState.connectionStatus.rawValue)")
-        .accessibilityHint(connectionManager.caneState.connectionStatus == .connected ? "Double-tap to disconnect the cane." : "Double-tap to connect the cane.")
+        .accessibilityHint(connectionManager.caneState.connectionStatus == .connected ? "Double-tap to disconnect the cane." : connectionManager.pairedDevice != nil ? "Double-tap to reconnect the paired cane." : "Double-tap to pair and connect the cane over Wi-Fi.")
     }
 
     private var navigationButton: some View {
@@ -172,39 +178,6 @@ struct HomeView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(locationManager.hasActiveNavigation ? "Current destination \(locationManager.navigationStatusValue)" : "No current navigation")
         .accessibilityHint(locationManager.hasActiveNavigation ? "Double-tap to change destination." : "Double-tap to search for a destination.")
-    }
-
-    private var networkModeControl: some View {
-        HStack(spacing: 10) {
-            networkModeChip(.auto, label: "Auto")
-            networkModeChip(.phoneHotspot, label: "Hotspot")
-            networkModeChip(.piAccessPoint, label: "Pi AP")
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Cane network mode")
-        .accessibilityHint("Choose hotspot or Pi access point transport profile.")
-    }
-
-    private func networkModeChip(_ mode: CaneNetworkMode, label: String) -> some View {
-        let isSelected = connectionManager.caneState.networkMode == mode
-        return Button {
-            connectionManager.setNetworkMode(mode)
-        } label: {
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(isSelected ? Color.white : Color(red: 0.15, green: 0.21, blue: 0.24))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    isSelected
-                    ? Color(red: 0.18, green: 0.34, blue: 0.37)
-                    : Color.white.opacity(0.82),
-                    in: Capsule()
-                )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(label) mode")
-        .accessibilityHint(isSelected ? "Selected" : "Double tap to select")
     }
 
     private var vlmSection: some View {
@@ -236,6 +209,8 @@ struct HomeView: View {
     private func toggleDemoConnection() {
         if connectionManager.caneState.connectionStatus == .connected {
             connectionManager.disconnectFromCane()
+        } else if connectionManager.pairedDevice == nil {
+            showsSetupCane = true
         } else {
             connectionManager.connectToCane()
         }
@@ -245,10 +220,13 @@ struct HomeView: View {
         let navigation = locationManager.hasActiveNavigation
             ? "Navigating to \(locationManager.navigationStatusValue). Use Speak to change or stop."
             : "No active navigation. Use Speak to search."
+        let pairing = connectionManager.pairedDevice.map {
+            "Paired cane \($0.deviceName)."
+        } ?? "No cane paired yet. Open setup to connect this cane to your hotspot."
         let connectionCommand = connectionManager.caneState.connectionStatus == .connected
             ? "Say disconnect cane to disconnect."
-            : "Say connect cane."
-        let summary = "Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased()). \(navigation) \(connectionCommand) "
+            : connectionManager.pairedDevice != nil ? "Say connect cane to reconnect." : "Use the setup cane button to start onboarding."
+        let summary = "\(pairing) Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased()). \(navigation) \(connectionCommand)"
         speechManager.speak(summary, interrupt: true, force: true)
     }
 
@@ -289,5 +267,6 @@ struct HomeView_Previews: PreviewProvider {
             .environmentObject(profileManager)
             .environmentObject(visionManager)
             .environmentObject(VoiceCommandManager())
+            .environmentObject(CaneSetupManager())
     }
 }

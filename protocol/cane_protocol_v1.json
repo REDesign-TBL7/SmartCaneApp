@@ -28,6 +28,16 @@
   "oneOf": [
     {
       "type": "object",
+      "required": ["type", "protocolVersion", "timestampMs", "clientName"],
+      "properties": {
+        "type": { "const": "PAIR_HELLO" },
+        "protocolVersion": { "const": 1 },
+        "timestampMs": { "type": "integer" },
+        "clientName": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
       "required": ["type", "protocolVersion", "timestampMs", "command"],
       "properties": {
         "type": { "const": "DISCRETE_CMD" },
@@ -58,6 +68,18 @@
         "protocolVersion": { "const": 1 },
         "timestampMs": { "type": "integer" },
         "debugLabel": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "protocolVersion", "timestampMs", "deviceID", "deviceName"],
+      "properties": {
+        "type": { "const": "PAIR_INFO" },
+        "protocolVersion": { "const": 1 },
+        "timestampMs": { "type": "integer" },
+        "deviceID": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "wsPath": { "type": "string" }
       }
     },
     {
