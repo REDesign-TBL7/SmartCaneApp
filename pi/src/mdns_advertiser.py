@@ -15,13 +15,21 @@ except ImportError:  # pragma: no cover - optional dependency at runtime
 
 
 class MDNSAdvertiser:
-    """Publishes the Pi WebSocket service over mDNS/Bonjour."""
+    """Publishes a SmartCane endpoint over mDNS/Bonjour."""
 
-    def __init__(self, device_name: str, device_id: str, port: int = 8080) -> None:
+    def __init__(
+        self,
+        device_name: str,
+        device_id: str,
+        port: int,
+        service_type: str,
+        endpoint_path: str,
+    ) -> None:
         self.device_name = device_name
         self.device_id = device_id
         self.port = port
-        self.service_type = "_smartcane._tcp.local."
+        self.service_type = service_type
+        self.endpoint_path = endpoint_path
         self.zeroconf: Zeroconf | None = None
         self.service_info: ServiceInfo | None = None
 
@@ -40,7 +48,7 @@ class MDNSAdvertiser:
         properties: dict[str | bytes, str | bytes | Any] = {
             b"device_id": self.device_id.encode("utf-8"),
             b"device_name": self.device_name.encode("utf-8"),
-            b"ws_path": b"/ws",
+            b"endpoint_path": self.endpoint_path.encode("utf-8"),
         }
 
         self.zeroconf = Zeroconf(ip_version=IPVersion.V4Only)

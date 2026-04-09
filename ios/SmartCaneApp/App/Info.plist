@@ -31,6 +31,7 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_smartcane._tcp</string>
+		<string>_smartcane-setup._tcp</string>
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>SmartCaneApp uses the microphone only when you tap the speak button to give voice commands.</string>

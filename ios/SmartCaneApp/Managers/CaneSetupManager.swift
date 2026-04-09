@@ -24,8 +24,85 @@ final class CaneSetupManager: ObservableObject {
 
     let setupSSID = "SmartCaneSetup"
     let setupPassphrase = "SmartCaneSetup123"
-    private let setupEndpoint = URL(string: "http://192.168.4.1:8081/setup/hotspot")!
-    private let setupStatusEndpoint = URL(string: "http://192.168.4.1:8081/setup/status")!
+
+    private struct SetupEndpoint {
+        let host: String
+        let port: String
+        let label: String
+    }
+
+    private final class SetupBonjourDiscoverySession: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
+        private let browser = NetServiceBrowser()
+        private var services: [NetService] = []
+        private var discoveredEndpoints: [SetupEndpoint] = []
+        private var continuation: CheckedContinuation<[SetupEndpoint], Never>?
+        private var timeoutWorkItem: DispatchWorkItem?
+
+        func discover(timeout: TimeInterval, continuation: CheckedContinuation<[SetupEndpoint], Never>) {
+            self.continuation = continuation
+            browser.delegate = self
+            browser.searchForServices(ofType: "_smartcane-setup._tcp.", inDomain: "local.")
+
+            let timeoutWorkItem = DispatchWorkItem { [weak self] in
+                self?.finish()
+            }
+            self.timeoutWorkItem = timeoutWorkItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: timeoutWorkItem)
+        }
+
+        func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
+            services.append(service)
+            service.delegate = self
+            service.resolve(withTimeout: 1.5)
+        }
+
+        func netServiceDidResolveAddress(_ sender: NetService) {
+            let hostName = sender.hostName?
+                .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+
+            guard let hostName, !hostName.isEmpty, sender.port > 0 else {
+                return
+            }
+
+            discoveredEndpoints.append(
+                SetupEndpoint(
+                    host: hostName,
+                    port: String(sender.port),
+                    label: sender.name
+                )
+            )
+        }
+
+        func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
+            _ = errorDict
+        }
+
+        func netServiceBrowserDidStopSearch(_ browser: NetServiceBrowser) {
+            finish()
+        }
+
+        func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String : NSNumber]) {
+            _ = errorDict
+            finish()
+        }
+
+        private func finish() {
+            timeoutWorkItem?.cancel()
+            timeoutWorkItem = nil
+            browser.stop()
+            services.removeAll()
+
+            guard let continuation else {
+                return
+            }
+
+            self.continuation = nil
+            continuation.resume(returning: discoveredEndpoints)
+            discoveredEndpoints = []
+        }
+    }
+
+    private var bonjourDiscoverySession: SetupBonjourDiscoverySession?
 
     init() {
         hotspotSSID = UIDevice.current.name
@@ -33,6 +110,10 @@ final class CaneSetupManager: ObservableObject {
 
     func refreshSetupStatus() async {
         do {
+            guard let setupStatusEndpoint = await resolvedSetupStatusURL() else {
+                return
+            }
+
             let (data, _) = try await localOnlySession().data(from: setupStatusEndpoint)
             if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let deviceName = payload["deviceName"] as? String {
@@ -85,6 +166,10 @@ final class CaneSetupManager: ObservableObject {
     }
 
     private func sendSetupRequest(hotspotSSID: String, hotspotPassword: String, deviceName: String) async throws {
+        guard let setupEndpoint = await resolvedSetupRequestURL() else {
+            throw URLError(.cannotFindHost)
+        }
+
         var request = URLRequest(url: setupEndpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -100,6 +185,35 @@ final class CaneSetupManager: ObservableObject {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.badServerResponse)
         }
+    }
+
+    private func resolvedSetupStatusURL() async -> URL? {
+        guard let endpoint = await discoverSetupEndpoint() else {
+            return nil
+        }
+
+        return URL(string: "http://\(endpoint.host):\(endpoint.port)/setup/status")
+    }
+
+    private func resolvedSetupRequestURL() async -> URL? {
+        guard let endpoint = await discoverSetupEndpoint() else {
+            lastErrorMessage = "Could not find the cane setup service. Make sure your iPhone is joined to SmartCaneSetup."
+            statusMessage = "Setup service not found"
+            return nil
+        }
+
+        return URL(string: "http://\(endpoint.host):\(endpoint.port)/setup/hotspot")
+    }
+
+    private func discoverSetupEndpoint() async -> SetupEndpoint? {
+        let discovered = await withCheckedContinuation { (continuation: CheckedContinuation<[SetupEndpoint], Never>) in
+            let session = SetupBonjourDiscoverySession()
+            bonjourDiscoverySession = session
+            session.discover(timeout: 2.0, continuation: continuation)
+        }
+
+        bonjourDiscoverySession = nil
+        return discovered.first
     }
 
     private func localOnlySession() -> URLSession {

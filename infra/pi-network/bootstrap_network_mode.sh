@@ -34,13 +34,19 @@ wait_for_wifi_association() {
 mkdir -p /etc/smartcane
 
 if has_hotspot_config; then
+  echo "[1/3] Found saved hotspot config for ${WLAN_IFACE}, switching to hotspot client mode"
   restart_client_mode
+  echo "[2/3] Waiting for Wi-Fi association"
   if wait_for_wifi_association; then
     cat >"${MODE_FILE}" <<EOF
 SMARTCANE_NETWORK_MODE=PHONE_HOTSPOT_CLIENT
 EOF
+    echo "[3/3] Hotspot client mode active"
     exit 0
   fi
+
+  echo "[3/3] Hotspot association failed, falling back to setup AP"
 fi
 
+echo "[1/1] Starting setup AP mode"
 "${SETUP_AP_SCRIPT}"

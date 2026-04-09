@@ -65,14 +65,12 @@ The Pi runtime always serves on `0.0.0.0:8080`. The supported deployment flow is
 - If no hotspot config exists, bootstrap switches the Pi into setup AP mode:
   - SSID `SmartCaneSetup`
   - passphrase `SmartCaneSetup123`
-  - setup server `http://192.168.4.1:8081`
-- iPhone app joins the setup AP and sends hotspot credentials to `/setup/hotspot`
+  - setup server advertised as `_smartcane-setup._tcp`
+- iPhone app joins the setup AP and discovers the setup server over Bonjour / mDNS
 - Pi switches into iPhone-hotspot client mode
 - Pi advertises itself over mDNS / Bonjour as `_smartcane._tcp`
 - iPhone app discovers the Pi by service name and device ID, then connects to the resolved WebSocket endpoint
 - app sends `PAIR_HELLO` and stores the returned cane name/ID locally
-
-If mDNS is temporarily unavailable, the app still falls back to `ws://172.20.10.2:8080/ws`.
 
 Optional device identity overrides:
 

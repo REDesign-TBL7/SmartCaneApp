@@ -11,6 +11,7 @@ Message families:
 - `PAIR_INFO`, `TELEMETRY`, `CAMERA_FRAME`, and `DEBUG_PONG` from Pi to iOS
 
 Wi-Fi pairing:
+- iOS discovers the setup service over Bonjour / mDNS (`_smartcane-setup._tcp`) during first-time onboarding.
 - iOS first discovers the Pi over Bonjour / mDNS (`_smartcane._tcp`) when available.
 - iOS sends `PAIR_HELLO` when first connecting over the phone hotspot WebSocket path.
 - Pi responds with `PAIR_INFO`, including a stable device name and device ID.

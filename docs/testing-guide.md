@@ -237,7 +237,6 @@ PY
 Replace `<pi-ip>` with:
 
 - the host resolved by Bonjour / mDNS for `_smartcane._tcp`
-- fallback: often `172.20.10.2` in phone hotspot mode
 
 Pass criteria:
 
@@ -259,7 +258,7 @@ Setup AP onboarding expected:
 
 - Pi advertises `SmartCaneSetup`
 - user joins `SmartCaneSetup` manually in iPhone Wi-Fi settings
-- app posts hotspot details to `http://192.168.4.1:8081/setup/hotspot`
+- app discovers `_smartcane-setup._tcp` and posts hotspot details to the resolved setup server
 - Pi switches to hotspot-client mode
 
 Phone hotspot mode expected:
@@ -267,7 +266,6 @@ Phone hotspot mode expected:
 - Pi joins iPhone hotspot
 - Pi advertises `_smartcane._tcp` over Bonjour / mDNS
 - iOS app discovers the Pi and connects to the resolved WebSocket endpoint
-- fallback: iOS app can still try `ws://172.20.10.2:8080/ws`
 
 Check runtime:
 

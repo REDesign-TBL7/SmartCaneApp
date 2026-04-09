@@ -138,11 +138,7 @@ final class CaneConnectionManager: ObservableObject {
         }
     }
 
-    private let hotspotEndpoint = EndpointProfile(
-        host: "172.20.10.2",
-        port: "8080",
-        label: "Phone hotspot"
-    )
+    private let hotspotLabel = "Phone hotspot"
     private let pairingStorageKey = "smart_cane_paired_device"
 
     private var currentEndpoint: EndpointProfile?
@@ -203,7 +199,7 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     var activeEndpointLabel: String {
-        pairedDevice?.deviceName ?? currentEndpoint?.label ?? hotspotEndpoint.label
+        pairedDevice?.deviceName ?? currentEndpoint?.label ?? hotspotLabel
     }
 
     func registerFrameHandler(_ handler: @escaping (Data) -> Void) {
@@ -361,7 +357,7 @@ final class CaneConnectionManager: ObservableObject {
         let endpoint = discoveredEndpoint ?? EndpointProfile(
             host: pairedDevice.host,
             port: pairedDevice.port,
-            label: hotspotEndpoint.label
+            label: hotspotLabel
         )
         caneState.statusMessage = "Connecting to \(pairedDevice.deviceName)"
         appendDebugLog("pairing", "Using saved pairing for \(pairedDevice.summaryText)")
@@ -381,7 +377,7 @@ final class CaneConnectionManager: ObservableObject {
                 )
             )
         } else {
-            appendDebugLog("mdns", "Bonjour lookup did not find \(pairedDevice.deviceName), falling back to saved host")
+            appendDebugLog("mdns", "Bonjour lookup did not find \(pairedDevice.deviceName), falling back to saved resolved host")
         }
 
         let reachable = await probeEndpoint(endpoint)
@@ -512,13 +508,7 @@ final class CaneConnectionManager: ObservableObject {
 
     private func candidatePairingEndpoints() async -> [EndpointProfile] {
         let discovered = await discoverBonjourServices()
-        var endpoints = discovered.map(\.endpoint)
-
-        if !endpoints.contains(where: { $0.host == hotspotEndpoint.host && $0.port == hotspotEndpoint.port }) {
-            endpoints.append(hotspotEndpoint)
-        }
-
-        return endpoints
+        return discovered.map(\.endpoint)
     }
 
     private func discoverEndpoint(matching deviceID: String) async -> EndpointProfile? {

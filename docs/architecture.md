@@ -45,6 +45,5 @@ distance back over serial.
 - `PHONE_HOTSPOT`: Pi joins the iPhone hotspot, advertises `_smartcane._tcp`, and the app discovers it over Bonjour / mDNS.
 - SmartCane traffic stays on the local hotspot Wi-Fi link because the app disables
   cellular access for the cane transport session.
-- First-time onboarding uses the setup AP and a local HTTP setup server on `192.168.4.1:8081`.
+- First-time onboarding uses the setup AP and a setup service advertised as `_smartcane-setup._tcp`.
 - The Pi server always binds `0.0.0.0:8080`; the app should prefer Bonjour discovery instead of assuming a fixed hotspot IP.
-- A fixed-IP fallback to `172.20.10.2:8080` is still kept for temporary recovery if mDNS is unavailable.

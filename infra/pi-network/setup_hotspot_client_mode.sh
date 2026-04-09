@@ -32,6 +32,7 @@ if [[ -z "${SSID}" || -z "${PSK}" ]]; then
   exit 1
 fi
 
+echo "[0/6] Preparing hotspot client mode for SSID=${SSID}"
 echo "[1/6] Disabling AP services"
 systemctl disable hostapd || true
 systemctl disable dnsmasq || true
@@ -66,6 +67,7 @@ echo "[6/6] Restarting network services"
 systemctl restart dhcpcd
 systemctl restart wpa_supplicant@${WLAN_IFACE}
 
+echo "[7/7] Recording SmartCane network mode"
 mkdir -p /etc/smartcane
 cat >/etc/smartcane/network_mode <<EOF
 SMARTCANE_NETWORK_MODE=PHONE_HOTSPOT_CLIENT

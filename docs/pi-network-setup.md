@@ -32,7 +32,7 @@ sudo infra/pi-network/install_runtime_service.sh
 
 - SSID `SmartCaneSetup`
 - passphrase `SmartCaneSetup123`
-- setup server `http://192.168.4.1:8081`
+- setup service `_smartcane-setup._tcp`
 
 3. Open the iPhone app and use `Set up cane`.
 
@@ -41,7 +41,7 @@ sudo infra/pi-network/install_runtime_service.sh
 - SSID `SmartCaneSetup`
 - passphrase `SmartCaneSetup123`
 
-5. Return to the app. The app sends hotspot credentials to the setup server, and the Pi switches to hotspot mode.
+5. Return to the app. The app discovers the setup server over Bonjour / mDNS, sends hotspot credentials, and the Pi switches to hotspot mode.
 
 ## 2) Configure phone hotspot client mode manually
 
@@ -62,10 +62,6 @@ Expected result:
 - Pi gets a DHCP address from the iPhone hotspot
 - Pi advertises `_smartcane._tcp` over Bonjour / mDNS
 - iOS app discovers the Pi by service name and device ID, then connects to the resolved WebSocket endpoint
-
-Fallback:
-
-- If Bonjour is temporarily unavailable, the app still tries `ws://172.20.10.2:8080/ws`
 
 ## 3) Check active mode
 

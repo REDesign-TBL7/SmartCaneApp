@@ -13,9 +13,11 @@ AP_CHANNEL="${AP_CHANNEL:-1}"
 AP_COUNTRY="${AP_COUNTRY:-SG}"
 AP_SUBNET_CIDR="${AP_SUBNET_CIDR:-192.168.4.1/24}"
 
+echo "[1/10] Installing AP dependencies"
 apt-get update
 apt-get install -y hostapd dnsmasq iw rfkill
 
+echo "[2/10] Releasing Wi-Fi interface from client-mode services"
 rfkill unblock wifi || true
 systemctl disable wpa_supplicant.service || true
 systemctl stop wpa_supplicant.service || true
@@ -25,12 +27,14 @@ systemctl stop NetworkManager || true
 systemctl stop hostapd || true
 systemctl stop dnsmasq || true
 
+echo "[3/10] Resetting ${WLAN_IFACE} state"
 ip link set "${WLAN_IFACE}" down || true
 ip addr flush dev "${WLAN_IFACE}" || true
 ip link set "${WLAN_IFACE}" up || true
 iw reg set "${AP_COUNTRY}" || true
 iw dev "${WLAN_IFACE}" set power_save off || true
 
+echo "[4/10] Writing /etc/hostapd/hostapd.conf"
 cat >/etc/hostapd/hostapd.conf <<EOF
 country_code=${AP_COUNTRY}
 driver=nl80211
@@ -50,8 +54,10 @@ wpa_pairwise=TKIP
 rsn_pairwise=CCMP
 EOF
 
+echo "[5/10] Pointing hostapd service to SmartCane config"
 sed -i 's|^#\?DAEMON_CONF=.*|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd
 
+echo "[6/10] Writing dnsmasq DHCP config for setup AP"
 mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig 2>/dev/null || true
 cat >/etc/dnsmasq.conf <<EOF
 interface=${WLAN_IFACE}
@@ -61,6 +67,7 @@ domain-needed
 bogus-priv
 EOF
 
+echo "[7/10] Ensuring static AP address exists in dhcpcd"
 grep -q "# smartcane-ap" /etc/dhcpcd.conf || cat >>/etc/dhcpcd.conf <<EOF
 
 # smartcane-ap
@@ -69,13 +76,17 @@ interface ${WLAN_IFACE}
   nohook wpa_supplicant
 EOF
 
+echo "[8/10] Enabling AP services"
 systemctl unmask hostapd
 systemctl enable hostapd
 systemctl enable dnsmasq
+
+echo "[9/10] Restarting dhcpcd, hostapd, and dnsmasq"
 systemctl restart dhcpcd
 systemctl restart hostapd
 systemctl restart dnsmasq
 
+echo "[10/10] Recording SmartCane network mode"
 mkdir -p /etc/smartcane
 cat >/etc/smartcane/network_mode <<EOF
 SMARTCANE_NETWORK_MODE=PI_SETUP_AP

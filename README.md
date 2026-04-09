@@ -46,15 +46,14 @@ IMU split:
 - First-time setup:
   - Pi boots into a temporary setup Wi-Fi network named `SmartCaneSetup`
   - user joins that setup network manually in iPhone Wi-Fi settings
-  - app sends the iPhone hotspot credentials to the Pi setup server
+  - Pi advertises its setup server over Bonjour / mDNS as `_smartcane-setup._tcp`
+  - app discovers the setup server and sends the iPhone hotspot credentials to the Pi
 - Normal use:
   - Pi joins the iPhone hotspot
   - Pi advertises itself over Bonjour / mDNS as `_smartcane._tcp`
   - iPhone app discovers the Pi by service name and device ID, then connects to the resolved WebSocket endpoint
   - app stores the cane device name/ID locally after pairing
   - other phone internet usage can continue over the phone's normal internet path
-
-If Bonjour discovery is temporarily unavailable, the app still falls back to `ws://172.20.10.2:8080/ws`.
 
 ## Setup guides
 
