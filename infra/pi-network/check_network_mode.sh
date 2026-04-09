@@ -33,7 +33,9 @@ echo
 
 echo "Inference:"
 if systemctl is-active --quiet hostapd; then
-  echo "Mode looks like: PI_AP"
+  echo "Mode looks like: PI_SETUP_AP"
+elif systemctl is-active --quiet "wpa_supplicant@${WLAN_IFACE}"; then
+  echo "Mode looks like: PHONE_HOTSPOT_CLIENT"
 else
-  echo "Mode looks like: PHONE_HOTSPOT_CLIENT (or other client mode)"
+  echo "Mode not active on ${WLAN_IFACE}"
 fi

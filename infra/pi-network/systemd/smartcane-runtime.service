@@ -1,7 +1,7 @@
 [Unit]
 Description=SmartCane Pi Runtime
-After=network-online.target
-Wants=network-online.target
+After=network-online.target smartcane-network-bootstrap.service
+Wants=network-online.target smartcane-network-bootstrap.service
 
 [Service]
 Type=simple

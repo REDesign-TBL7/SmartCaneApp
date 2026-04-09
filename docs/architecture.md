@@ -39,11 +39,12 @@ distance back over serial.
 - iOS cane transport disables cellular access at URLSession level.
 - Cane connection is only attempted while Wi-Fi interface is active.
 
-## Outdoor connectivity profiles
+## Connectivity profile
 
-- `AUTO`: prefers phone hotspot endpoint (`172.20.10.2`), fallback profile is Pi AP endpoint (`192.168.4.1`).
-- `PHONE_HOTSPOT`: use when outdoors to retain cellular internet and local Wi-Fi cane link.
-- `PI_AP`: direct connection to Pi-hosted access point when hotspot is unavailable.
-
-Both endpoint modes are implemented in iOS transport selection only. The Pi server code
-always binds `0.0.0.0:8080`; AP vs hotspot is determined by Linux network config on Pi.
+- `PI_SETUP_AP`: provisioning-only fallback network `SmartCaneSetup` on `192.168.4.1`.
+- `PHONE_HOTSPOT`: Pi joins the iPhone hotspot, advertises `_smartcane._tcp`, and the app discovers it over Bonjour / mDNS.
+- SmartCane traffic stays on the local hotspot Wi-Fi link because the app disables
+  cellular access for the cane transport session.
+- First-time onboarding uses the setup AP and a local HTTP setup server on `192.168.4.1:8081`.
+- The Pi server always binds `0.0.0.0:8080`; the app should prefer Bonjour discovery instead of assuming a fixed hotspot IP.
+- A fixed-IP fallback to `172.20.10.2:8080` is still kept for temporary recovery if mDNS is unavailable.

@@ -221,18 +221,39 @@ struct UserProfileView: View {
 
     private var deviceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Connected Device")
+            sectionTitle("Cane Device")
 
-            HStack {
+            VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(connectionManager.caneState.connectionStatus.rawValue)
+                    Text(connectionManager.pairedDevice?.deviceName ?? "No paired cane")
                         .font(.subheadline.weight(.semibold))
+
+                    if let pairedDevice = connectionManager.pairedDevice {
+                        Text("Device ID \(pairedDevice.deviceID)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
                     Text(connectionManager.caneState.statusMessage)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer()
+                if connectionManager.pairedDevice != nil {
+                    Button(role: .destructive) {
+                        connectionManager.forgetPairedCane()
+                    } label: {
+                        Text("Forget paired cane")
+                            .font(.footnote.weight(.semibold))
+                            .frame(minHeight: 44)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.white.opacity(0.82), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Forget paired cane")
+                    .accessibilityHint("Removes the saved Wi-Fi pairing so the app can pair with a different cane.")
+                }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -241,8 +262,7 @@ struct UserProfileView: View {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(Color.white.opacity(0.55), lineWidth: 1)
             )
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Connected device status \(connectionManager.caneState.connectionStatus.rawValue). \(connectionManager.caneState.statusMessage)")
+            .accessibilityElement(children: .contain)
         }
     }
 

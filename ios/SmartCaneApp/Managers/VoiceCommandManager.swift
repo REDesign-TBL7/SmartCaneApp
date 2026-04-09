@@ -240,7 +240,7 @@ final class VoiceCommandManager: ObservableObject {
         }
 
         if commandText.contains("help") || commandText == "what can i say" {
-            speechManager.speak("Try: connect cane, disconnect cane, status, search location, go home, or stop navigation.", interrupt: true)
+            speechManager.speak("Try: connect cane, disconnect cane, status, search for a place, go home, or stop navigation.", interrupt: true)
             return
         }
 
@@ -251,8 +251,12 @@ final class VoiceCommandManager: ObservableObject {
         }
 
         if commandText.contains("connect") {
-            connectionManager.connectToCane()
-            speechManager.speak("Connecting to cane.", interrupt: true)
+            if connectionManager.pairedDevice == nil {
+                speechManager.speak("No cane is set up yet. Use the setup cane button on screen first.", interrupt: true)
+            } else {
+                connectionManager.connectToCane()
+                speechManager.speak("Connecting to cane.", interrupt: true)
+            }
             return
         }
 
@@ -314,17 +318,20 @@ final class VoiceCommandManager: ObservableObject {
     }
 
     private func statusSummary(connectionManager: CaneConnectionManager, locationManager: LocationManager) -> String {
+        let pairing = connectionManager.pairedDevice.map {
+            "Paired with \($0.deviceName)."
+        } ?? "No cane paired yet."
         let connection = "Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased())."
         let navigation = locationManager.hasActiveNavigation
             ? "Navigating to \(locationManager.navigationStatusValue)."
             : "No active navigation."
         let connectionCommand = connectionManager.caneState.connectionStatus == .connected
             ? "Say disconnect cane to disconnect."
-            : "Say connect cane to connect."
+            : connectionManager.pairedDevice != nil ? "Say connect cane to reconnect." : "Say connect cane to pair and connect."
         let navigationCommand = locationManager.hasActiveNavigation
             ? "Say stop, or search for a new destination."
             : "Search for a destination."
-        return "\(connection) \(navigation) \(connectionCommand) \(navigationCommand)"
+        return "\(pairing) \(connection) \(navigation) \(connectionCommand) \(navigationCommand)"
     }
 
     private func requestSpeechAndMicrophoneAccess() async -> Bool {

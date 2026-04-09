@@ -1,12 +1,16 @@
 import asyncio
 import json
 import logging
+import os
+import socket
 import time
+from pathlib import Path
 from typing import Any
 
 from websockets.server import WebSocketServerProtocol
 
 logger = logging.getLogger(__name__)
+DEVICE_NAME_PATH = Path("/etc/smartcane/device_name")
 
 
 class CommServer:
@@ -17,6 +21,9 @@ class CommServer:
         self.heartbeat_count = 0
         self.last_heartbeat_time = 0.0
         self.latest_phone_location: tuple[float | None, float | None] = (None, None)
+        default_name = f"SmartCane-{socket.gethostname()}"
+        self.device_name = self._current_device_name(default_name)
+        self.device_id = os.getenv("SMARTCANE_DEVICE_ID", socket.gethostname())
 
     async def handler(self, websocket: WebSocketServerProtocol) -> None:
         self.clients.add(websocket)
@@ -57,6 +64,23 @@ class CommServer:
                         "echo": payload.get("debugLabel"),
                     }
                     logger.info("Responding to DEBUG_PING echo=%s", response["echo"])
+                    await websocket.send(json.dumps(response))
+                elif payload_type == "PAIR_HELLO":
+                    self.device_name = self._current_device_name(self.device_name)
+                    response = {
+                        "type": "PAIR_INFO",
+                        "protocolVersion": 1,
+                        "timestampMs": int(time.time() * 1000),
+                        "deviceID": self.device_id,
+                        "deviceName": self.device_name,
+                        "wsPath": "/ws",
+                    }
+                    logger.info(
+                        "Responding to PAIR_HELLO from %s with device=%s (%s)",
+                        payload.get("clientName"),
+                        self.device_name,
+                        self.device_id,
+                    )
                     await websocket.send(json.dumps(response))
         finally:
             self.clients.discard(websocket)
@@ -117,3 +141,9 @@ class CommServer:
             return json.loads(message)
         except json.JSONDecodeError:
             return None
+
+    @staticmethod
+    def _current_device_name(default_name: str) -> str:
+        if DEVICE_NAME_PATH.exists():
+            return DEVICE_NAME_PATH.read_text().strip() or default_name
+        return os.getenv("SMARTCANE_DEVICE_NAME", default_name)

@@ -236,8 +236,8 @@ PY
 
 Replace `<pi-ip>` with:
 
-- `192.168.4.1` in Pi AP mode
-- often `172.20.10.2` in phone hotspot mode
+- the host resolved by Bonjour / mDNS for `_smartcane._tcp`
+- fallback: often `172.20.10.2` in phone hotspot mode
 
 Pass criteria:
 
@@ -255,15 +255,19 @@ Use the setup guide:
 docs/pi-network-setup.md
 ```
 
-Pi AP mode expected:
+Setup AP onboarding expected:
 
-- iPhone joins `SmartCanePi`
-- iOS `Pi AP` mode connects to `ws://192.168.4.1:8080/ws`
+- Pi advertises `SmartCaneSetup`
+- user joins `SmartCaneSetup` manually in iPhone Wi-Fi settings
+- app posts hotspot details to `http://192.168.4.1:8081/setup/hotspot`
+- Pi switches to hotspot-client mode
 
 Phone hotspot mode expected:
 
 - Pi joins iPhone hotspot
-- iOS `Hotspot` mode connects to `ws://172.20.10.2:8080/ws`
+- Pi advertises `_smartcane._tcp` over Bonjour / mDNS
+- iOS app discovers the Pi and connects to the resolved WebSocket endpoint
+- fallback: iOS app can still try `ws://172.20.10.2:8080/ws`
 
 Check runtime:
 
@@ -322,16 +326,13 @@ tail -f /Users/hanyuxuan/Desktop/REDesign/pi/logs/pi_runtime.log
 Phone app steps:
 
 1. Open the iOS app on the phone.
-2. Select the correct network mode:
-   - `Hotspot` if Pi joined your phone hotspot
-   - `Pi AP` if phone joined the Pi access point
-3. Activate the connection button.
-4. Wait for `Connected`.
-5. Open the FastVLM screen.
-6. Press `Send test ping to Pi`.
-7. Confirm the app shows `Last ping` with a round-trip time in milliseconds.
-8. Search for a nearby destination from the main screen and select it.
-9. Return to the FastVLM screen and inspect:
+2. Activate the connection button.
+3. Wait for `Connected`.
+4. Open the FastVLM screen.
+5. Press `Send test ping to Pi`.
+6. Confirm the app shows `Last ping` with a round-trip time in milliseconds.
+7. Search for a nearby destination from the main screen and select it.
+8. Return to the FastVLM screen and inspect:
    - connection logs
    - navigation logs
    - VLM logs
@@ -547,17 +548,16 @@ Setup:
 - ESP32 flashed with `motor_controller.ino`
 - ESP32 connected to Pi over USB serial
 - Pi runtime running
-- iPhone connected to same cane network mode
+- iPhone hotspot enabled and Pi joined to it
 - Motors lifted or cane safely restrained
 
 Steps:
 
 1. Open app on iPhone.
-2. Select correct network mode.
-3. Double-tap `Disconnected` to connect.
-4. Search a nearby destination.
-5. Select destination.
-6. Observe ESP32 serial monitor.
+2. Double-tap `Disconnected` to connect.
+3. Search a nearby destination.
+4. Select destination.
+5. Observe ESP32 serial monitor.
 
 Expected:
 
@@ -600,17 +600,16 @@ Setup:
 - ESP32 may be disconnected.
 - Motors must stay disconnected or safely restrained.
 - Pi runtime is running.
-- iPhone is on the correct network mode.
+- iPhone hotspot is on and the Pi has joined it.
 
 Steps:
 
 1. Start Pi runtime.
 2. Open the iOS app.
-3. Select `Hotspot` or `Pi AP` mode.
-4. Double-tap `Disconnected`.
-5. Wait for `Connected`.
-6. Search and select a destination.
-7. Watch Pi terminal logs or app status.
+3. Double-tap `Disconnected`.
+4. Wait for `Connected`.
+5. Search and select a destination.
+6. Watch Pi terminal logs or app status.
 
 Pass criteria:
 
@@ -625,7 +624,7 @@ Fail signals:
 - App remains disconnected.
 - Pi never receives heartbeat.
 - App connects but no telemetry arrives.
-- Wrong network mode is selected.
+- Pi is not connected to the phone hotspot.
 
 ### Phase B: Pi to ESP32 Only
 
@@ -874,7 +873,7 @@ For each test run, write down:
 
 - date and location
 - hardware setup
-- network mode
+- hotspot SSID used
 - ESP32 serial port
 - app destination searched
 - command observed on ESP32
