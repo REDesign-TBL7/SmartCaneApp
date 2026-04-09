@@ -19,8 +19,20 @@ systemctl is-enabled hostapd 2>/dev/null || true
 systemctl is-active hostapd 2>/dev/null || true
 systemctl is-enabled dnsmasq 2>/dev/null || true
 systemctl is-active dnsmasq 2>/dev/null || true
+systemctl is-enabled wpa_supplicant.service 2>/dev/null || true
+systemctl is-active wpa_supplicant.service 2>/dev/null || true
 systemctl is-enabled "wpa_supplicant@${WLAN_IFACE}" 2>/dev/null || true
 systemctl is-active "wpa_supplicant@${WLAN_IFACE}" 2>/dev/null || true
+systemctl is-enabled NetworkManager 2>/dev/null || true
+systemctl is-active NetworkManager 2>/dev/null || true
+
+echo
+echo "rfkill:"
+rfkill list 2>/dev/null || true
+
+echo
+echo "iw dev:"
+iw dev 2>/dev/null || true
 
 echo
 echo "SmartCane mode file:"
