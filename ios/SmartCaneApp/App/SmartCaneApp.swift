@@ -16,6 +16,7 @@ struct SmartCaneDemoApp: App {
     @StateObject private var profileManager: ProfileManager
     @StateObject private var visionManager: VisionManager
     @StateObject private var fusionManager: GuidanceFusionManager
+    @StateObject private var voiceCommandManager: VoiceCommandManager
 
     init() {
         let profileManager = ProfileManager()
@@ -31,6 +32,7 @@ struct SmartCaneDemoApp: App {
         _speechManager = StateObject(wrappedValue: SpeechManager())
         _visionManager = StateObject(wrappedValue: visionManager)
         _fusionManager = StateObject(wrappedValue: fusionManager)
+        _voiceCommandManager = StateObject(wrappedValue: VoiceCommandManager())
     }
 
     var body: some Scene {
@@ -42,6 +44,7 @@ struct SmartCaneDemoApp: App {
                 .environmentObject(profileManager)
                 .environmentObject(visionManager)
                 .environmentObject(fusionManager)
+                .environmentObject(voiceCommandManager)
                 .tint(Color(red: 0.18, green: 0.34, blue: 0.37))
         }
     }

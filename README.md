@@ -6,7 +6,8 @@ This repository contains the two runtime codebases for the smart cane system.
 
 ```text
 ios/       SwiftUI app for navigation, voice UX, and on-device FastVLM inference
-pi/        Python runtime for motors, HC-SR04, MPU9250, camera streaming, and Wi-Fi server
+pi/        Python runtime for WebSocket comms, sensors, handle IMU, camera streaming, and ESP32 command forwarding
+esp32/     Arduino motor controller for DRV8313 motor sequencing and motor-unit IMU telemetry
 protocol/  Shared JSON protocol schema between iOS and Pi
 docs/      Architecture, safety, and calibration notes
 infra/     Pi network provisioning and service install scripts
@@ -30,6 +31,14 @@ python src/main.py
 
 WebSocket endpoint defaults to `ws://<pi-ip>:8080/ws`.
 
+The Pi forwards safety-checked motor commands to the ESP32 over serial. The ESP32
+sketch is in `esp32/motor_controller/motor_controller.ino`.
+
+IMU split:
+
+- ESP32 motor-unit IMU: motor/tip orientation for haptic guidance.
+- Pi handle IMU: handle motion for future camera deblur/stabilization.
+
 ## Connectivity behavior
 
 - The iOS cane transport is Wi-Fi only and explicitly disables cellular usage.
@@ -41,6 +50,7 @@ WebSocket endpoint defaults to `ws://<pi-ip>:8080/ws`.
 
 ## Setup guides
 
+- Full testing guide: `docs/testing-guide.md`
 - Pi networking and service setup: `docs/pi-network-setup.md`
 - FastVLM model and app integration: `docs/fastvlm-integration.md`
 

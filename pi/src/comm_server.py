@@ -48,22 +48,38 @@ class CommServer:
 
     def telemetry_payload(
         self,
-        battery_percentage: int,
         obstacle_distance_cm: float,
-        heading_degrees: float,
+        motor_imu_available: bool,
+        motor_imu_heading_degrees: float | None,
+        motor_imu_pitch_degrees: float | None,
+        motor_imu_roll_degrees: float | None,
+        handle_imu_available: bool,
+        handle_imu_heading_degrees: float,
+        handle_imu_gyro_z_dps: float,
         gps_fix_status: str,
         fault_code: str,
+        status_message: str,
     ) -> dict[str, Any]:
         return {
             "type": "TELEMETRY",
             "protocolVersion": 1,
             "timestampMs": int(time.time() * 1000),
-            "batteryPercentage": battery_percentage,
             "obstacleDistanceCm": obstacle_distance_cm,
-            "headingDegrees": heading_degrees,
+            # Explicit two-IMU telemetry:
+            # - motor IMU lives on ESP32 and should be used for motor-unit heading.
+            # - handle IMU lives on Pi and is for camera deblur/stabilization.
+            "motorImuAvailable": motor_imu_available,
+            "motorImuHeadingDegrees": motor_imu_heading_degrees,
+            "motorImuPitchDegrees": motor_imu_pitch_degrees,
+            "motorImuRollDegrees": motor_imu_roll_degrees,
+            "handleImuAvailable": handle_imu_available,
+            "handleImuHeadingDegrees": handle_imu_heading_degrees,
+            "handleImuGyroZDegreesPerSecond": handle_imu_gyro_z_dps,
+            # Legacy field kept for older clients until they migrate.
+            "headingDegrees": motor_imu_heading_degrees,
             "gpsFixStatus": gps_fix_status,
             "faultCode": fault_code,
-            "statusMessage": "Pi runtime active",
+            "statusMessage": status_message,
         }
 
     @staticmethod

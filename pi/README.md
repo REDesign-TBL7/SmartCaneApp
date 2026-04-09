@@ -1,7 +1,8 @@
 # Pi Runtime
 
-Python runtime for Raspberry Pi Zero 2W motor control, HC-SR04 ultrasonic sensing,
-MPU9250 IMU heading, Pi camera frame streaming, and cane comms.
+Python runtime for Raspberry Pi Zero 2W cane comms, HC-SR04 ultrasonic sensing,
+handle-mounted MPU9250 IMU data for camera deblur, Pi camera frame streaming,
+and ESP32 motor-command forwarding.
 
 ## Run
 
@@ -13,6 +14,46 @@ python src/main.py
 ```
 
 WebSocket server binds to `0.0.0.0:8080`.
+
+## Pi to ESP32 motor link
+
+Motor GPIO control has moved off the Pi. The Pi now forwards the final safety-
+checked motor command to the ESP32 over serial.
+
+Default serial discovery order:
+
+- `/dev/ttyUSB0`
+- `/dev/ttyACM0`
+- `/dev/serial0`
+
+Override if needed:
+
+```bash
+export SMARTCANE_ESP32_PORT=/dev/ttyACM0
+export SMARTCANE_ESP32_BAUD=115200
+python src/main.py
+```
+
+The Pi sends one line per command:
+
+```text
+LEFT
+RIGHT
+FORWARD
+STOP
+```
+
+The ESP32 sketch is in `esp32/motor_controller/motor_controller.ino`.
+
+The Pi also listens for ESP32 motor-unit IMU telemetry lines:
+
+```text
+MOTOR_IMU <available> <headingDegrees> <pitchDegrees> <rollDegrees>
+```
+
+That motor-unit heading is forwarded to iOS as `motorImuHeadingDegrees`. The Pi's
+own handle IMU is forwarded separately as `handleImu...` fields for future camera
+deblur/stabilization.
 
 ## AP vs hotspot
 
@@ -31,10 +72,8 @@ Provisioning scripts are included in `infra/pi-network/`:
 ## Hardware mapping
 
 - Ultrasonic trigger/echo pins (BOARD): `(7,11)`, `(15,16)`, `(22,23)`
-- Motor driver channels (BOARD pin numbering for DRV8313):
-  - Motor 1: `IN1=25`, `IN2=26`, `IN3=27`, `EN=14`
-  - Motor 2: `IN1=32`, `IN2=33`, `IN3=13`, `EN=12`
-  - Motor 3: `IN1=18`, `IN2=19`, `IN3=21`, `EN=5`
-- MPU9250 over I2C bus 1 at address `0x68`
+- Handle MPU9250 over I2C bus 1 at address `0x68`
+- ESP32 handles motor DRV8313 pins in `esp32/motor_controller/motor_controller.ino`
+- ESP32 motor unit owns the motor-control IMU
 
-Motor control uses `GPIO.setmode(GPIO.BOARD)` to match the pin mapping above.
+Ultrasonic sensing still uses `GPIO.setmode(GPIO.BOARD)` to match the pin mapping above.

@@ -6,8 +6,7 @@
  Layout:
  1. Cane connection
  2. Current destination
- 3. Battery
- 4. Live FastVLM scene output
+ 3. Live FastVLM scene output
 */
 
 import SwiftUI
@@ -27,12 +26,22 @@ struct HomeView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
                         navigationSection
-                        batterySection
                         vlmSection
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 92)
+                }
+
+                VStack {
+                    Spacer()
+                    HStack {
+                        readMenuButton
+                        Spacer()
+                        VoiceCommandButton()
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 18)
                 }
             }
             .navigationTitle("Smart Cane")
@@ -41,22 +50,11 @@ struct HomeView: View {
                 NavigationView()
             }
             .onAppear {
-                announceHomeSummary()
+                speechManager.speak("Smart Cane ready. Use Read for status, or Speak for voice commands.")
             }
             .onChange(of: connectionManager.caneState.connectionStatus) { newStatus in
                 speechManager.speakUrgent("Cane connection \(newStatus.rawValue.lowercased()).")
                 visionManager.setInferenceEnabled(newStatus == .connected)
-            }
-            .onChange(of: locationManager.currentInstruction) { newInstruction in
-                guard locationManager.hasActiveNavigation else {
-                    return
-                }
-                speechManager.speak(newInstruction, interrupt: true)
-            }
-            .onChange(of: connectionManager.caneState.batteryPercentage) { newBattery in
-                if newBattery < 20 {
-                    speechManager.speakUrgent("Warning. Cane battery low at \(newBattery) percent.")
-                }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -152,8 +150,8 @@ struct HomeView: View {
                 connectionManager.caneState.connectionStatus.rawValue,
                 systemImage: connectionManager.caneState.connectionStatus == .connected ? "wifi" : "wifi.slash",
                 detail: connectionManager.caneState.connectionStatus == .connected
-                    ? "Double-tap to disconnect. \(connectionManager.activeEndpointLabel)."
-                    : "Double-tap to connect over Wi-Fi. \(connectionManager.networkModeDescription)"
+                    ? "Tap to disconnect. \(connectionManager.activeEndpointLabel)."
+                    : "Tap to connect over Wi-Fi. \(connectionManager.networkModeDescription)"
             )
         }
         .buttonStyle(.plain)
@@ -168,7 +166,7 @@ struct HomeView: View {
             primaryActionLabel(
                 locationManager.hasActiveNavigation ? locationManager.navigationStatusValue : "No current navigation",
                 systemImage: locationManager.hasActiveNavigation ? "location.fill" : "magnifyingglass",
-                detail: locationManager.hasActiveNavigation ? "Double-tap to change destination. \(locationManager.currentInstruction)" : "Double-tap to search for a destination."
+                detail: locationManager.hasActiveNavigation ? "Tap to change destination." : "Tap to search for a destination."
             )
         }
         .buttonStyle(.plain)
@@ -209,44 +207,6 @@ struct HomeView: View {
         .accessibilityHint(isSelected ? "Selected" : "Double tap to select")
     }
 
-    private var batterySection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .center, spacing: 18) {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.9))
-                        .frame(width: 70, height: 70)
-
-                    Image(systemName: batteryIconName)
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(batteryColor)
-                        .accessibilityHidden(true)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("\(connectionManager.caneState.batteryPercentage)%")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-
-                    Text("Current cane battery")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 8)
-            }
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.60), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.white.opacity(0.55), lineWidth: 1)
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Cane battery: \(connectionManager.caneState.batteryPercentage) percent")
-        .accessibilityHint("Shows the latest battery level from the cane.")
-    }
-
     private var vlmSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("FastVLM runs on-device from Pi camera frames to provide scene-aware guidance.")
@@ -273,32 +233,6 @@ struct HomeView: View {
         )
     }
 
-    private var batteryColor: Color {
-        let battery = connectionManager.caneState.batteryPercentage
-
-        if battery > 50 {
-            return .green
-        } else if battery >= 20 {
-            return .orange
-        } else {
-            return .red
-        }
-    }
-
-    private var batteryIconName: String {
-        let battery = connectionManager.caneState.batteryPercentage
-
-        if battery > 75 {
-            return "battery.100"
-        } else if battery > 50 {
-            return "battery.75"
-        } else if battery > 25 {
-            return "battery.50"
-        } else {
-            return "battery.25"
-        }
-    }
-
     private func toggleDemoConnection() {
         if connectionManager.caneState.connectionStatus == .connected {
             connectionManager.disconnectFromCane()
@@ -308,8 +242,35 @@ struct HomeView: View {
     }
 
     private func announceHomeSummary() {
-        let summary = "\(connectionManager.caneState.connectionStatus.rawValue). \(locationManager.hasActiveNavigation ? locationManager.navigationStatusValue : "No current navigation")"
-        speechManager.speak(summary)
+        let navigation = locationManager.hasActiveNavigation
+            ? "Navigating to \(locationManager.navigationStatusValue). Use Speak to change or stop."
+            : "No active navigation. Use Speak to search."
+        let connectionCommand = connectionManager.caneState.connectionStatus == .connected
+            ? "Say disconnect cane to disconnect."
+            : "Say connect cane."
+        let summary = "Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased()). \(navigation) \(connectionCommand) "
+        speechManager.speak(summary, interrupt: true, force: true)
+    }
+
+    private var readMenuButton: some View {
+        Button {
+            announceHomeSummary()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "speaker.wave.2.fill")
+                    .accessibilityHidden(true)
+                Text("Read")
+                    .font(.subheadline.weight(.bold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 54)
+            .background(Color(red: 0.32, green: 0.35, blue: 0.30), in: Capsule())
+            .shadow(color: Color.black.opacity(0.16), radius: 12, x: 0, y: 7)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Read menu")
+        .accessibilityHint("Reads the current cane connection, navigation status, and available actions.")
     }
 }
 
@@ -327,5 +288,6 @@ struct HomeView_Previews: PreviewProvider {
             .environmentObject(speechManager)
             .environmentObject(profileManager)
             .environmentObject(visionManager)
+            .environmentObject(VoiceCommandManager())
     }
 }

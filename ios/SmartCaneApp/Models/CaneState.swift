@@ -7,7 +7,6 @@
  SwiftUI views update automatically when @Published values change.
  By keeping the important cane data in one model, the UI can react to:
  - connection changes
- - battery level updates
  - obstacle alerts
  - navigation instruction changes
 
@@ -40,6 +39,8 @@ enum GPSFixStatus: String, Codable {
 enum CaneFaultCode: String, Codable {
     case none = "NONE"
     case imuUnavailable = "IMU_UNAVAILABLE"
+    case handleIMUUnavailable = "HANDLE_IMU_UNAVAILABLE"
+    case motorIMUUnavailable = "MOTOR_IMU_UNAVAILABLE"
     case gpsUnavailable = "GPS_UNAVAILABLE"
     case motorDriverFault = "MOTOR_DRIVER_FAULT"
     case ultrasonicFault = "ULTRASONIC_FAULT"
@@ -57,9 +58,6 @@ struct CaneState: Codable {
     /// The most recent connection state.
     var connectionStatus: CaneConnectionStatus = .disconnected
 
-    /// Battery level from the Raspberry Pi, expected to be 0...100.
-    var batteryPercentage: Int = 100
-
     /// A short text message describing the latest obstacle event.
     var obstacleMessage: String = "No obstacles detected"
 
@@ -75,8 +73,17 @@ struct CaneState: Codable {
     /// Nearest obstacle distance reported by Pi sensors.
     var nearestObstacleCm: Double = -1
 
-    /// Current cane heading in degrees from IMU.
-    var headingDegrees: Double = 0
+    /// Current motor/tip-unit heading in degrees from the ESP32 IMU.
+    /// This should be used for haptic motor guidance decisions.
+    var motorUnitHeadingDegrees: Double = 0
+
+    /// True when the ESP32 reports valid motor-unit IMU data.
+    var isMotorUnitIMUAvailable = false
+
+    /// Handle-mounted Pi IMU data reserved for camera deblur/stabilization.
+    var isHandleIMUAvailable = false
+    var handleIMUHeadingDegrees: Double = 0
+    var handleIMUGyroZDegreesPerSecond: Double = 0
 
     /// GPS fix quality from Pi GPS module.
     var gpsFixStatus: GPSFixStatus = .noFix
@@ -140,8 +147,16 @@ struct OutboundCaneMessage: Codable {
 
 struct InboundTelemetryMessage: Codable {
     let type: String
-    let batteryPercentage: Int?
     let obstacleDistanceCm: Double?
+    let motorImuAvailable: Bool?
+    let motorImuHeadingDegrees: Double?
+    let motorImuPitchDegrees: Double?
+    let motorImuRollDegrees: Double?
+    let handleImuAvailable: Bool?
+    let handleImuHeadingDegrees: Double?
+    let handleImuGyroZDegreesPerSecond: Double?
+    /// Legacy heading field kept for older Pi telemetry. New data should use
+    /// motorImuHeadingDegrees instead.
     let headingDegrees: Double?
     let gpsFixStatus: GPSFixStatus?
     let statusMessage: String?

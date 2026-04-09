@@ -10,7 +10,6 @@
 		A10000000000000000000001 /* SmartCaneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* SmartCaneApp.swift */; };
 		A10000000000000000000002 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* HomeView.swift */; };
 		A10000000000000000000003 /* NavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* NavigationView.swift */; };
-		A10000000000000000000004 /* BatteryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* BatteryView.swift */; };
 		A10000000000000000000005 /* CVModelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* CVModelView.swift */; };
 		A10000000000000000000006 /* CaneConnectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* CaneConnectionManager.swift */; };
 		A10000000000000000000007 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* LocationManager.swift */; };
@@ -22,6 +21,8 @@
 		A10000000000000000000049 /* VisionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000004A /* VisionManager.swift */; };
 		A1000000000000000000004B /* GuidanceFusionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000004C /* GuidanceFusionManager.swift */; };
 		A1000000000000000000004D /* FastVLMAppleEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000004E /* FastVLMAppleEngine.swift */; };
+		A1000000000000000000004F /* VoiceCommandManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000050 /* VoiceCommandManager.swift */; };
+		A10000000000000000000051 /* VoiceCommandButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000052 /* VoiceCommandButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,7 +30,6 @@
 		A10000000000000000000011 /* SmartCaneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartCaneApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* NavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationView.swift; sourceTree = "<group>"; };
-		A10000000000000000000014 /* BatteryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryView.swift; sourceTree = "<group>"; };
 		A10000000000000000000015 /* CVModelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CVModelView.swift; sourceTree = "<group>"; };
 		A10000000000000000000016 /* CaneConnectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaneConnectionManager.swift; sourceTree = "<group>"; };
 		A10000000000000000000017 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
@@ -41,6 +41,9 @@
 		A1000000000000000000004A /* VisionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionManager.swift; sourceTree = "<group>"; };
 		A1000000000000000000004C /* GuidanceFusionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidanceFusionManager.swift; sourceTree = "<group>"; };
 		A1000000000000000000004E /* FastVLMAppleEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMAppleEngine.swift; sourceTree = "<group>"; };
+		A10000000000000000000050 /* VoiceCommandManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandManager.swift; sourceTree = "<group>"; };
+		A10000000000000000000052 /* VoiceCommandButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandButton.swift; sourceTree = "<group>"; };
+		A10000000000000000000053 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000011 /* SmartCaneApp.swift */,
+				A10000000000000000000053 /* Info.plist */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -86,9 +90,9 @@
 			children = (
 				A10000000000000000000012 /* HomeView.swift */,
 				A10000000000000000000013 /* NavigationView.swift */,
-				A10000000000000000000014 /* BatteryView.swift */,
 				A10000000000000000000015 /* CVModelView.swift */,
 				A10000000000000000000040 /* UserProfileView.swift */,
+				A10000000000000000000052 /* VoiceCommandButton.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -111,6 +115,7 @@
 				A1000000000000000000004A /* VisionManager.swift */,
 				A1000000000000000000004C /* GuidanceFusionManager.swift */,
 				A1000000000000000000004E /* FastVLMAppleEngine.swift */,
+				A10000000000000000000050 /* VoiceCommandManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -196,7 +201,6 @@
 				A10000000000000000000001 /* SmartCaneApp.swift in Sources */,
 				A10000000000000000000002 /* HomeView.swift in Sources */,
 				A10000000000000000000003 /* NavigationView.swift in Sources */,
-				A10000000000000000000004 /* BatteryView.swift in Sources */,
 				A10000000000000000000005 /* CVModelView.swift in Sources */,
 				A10000000000000000000006 /* CaneConnectionManager.swift in Sources */,
 				A10000000000000000000007 /* LocationManager.swift in Sources */,
@@ -208,6 +212,8 @@
 				A10000000000000000000049 /* VisionManager.swift in Sources */,
 				A1000000000000000000004B /* GuidanceFusionManager.swift in Sources */,
 				A1000000000000000000004D /* FastVLMAppleEngine.swift in Sources */,
+				A1000000000000000000004F /* VoiceCommandManager.swift in Sources */,
+				A10000000000000000000051 /* VoiceCommandButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,9 +246,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = G7SL6M9KWX;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = SmartCaneApp;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SmartCaneApp needs your location to show your position and calculate walking routes.";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SmartCaneApp/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -262,9 +267,8 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = G7SL6M9KWX;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = SmartCaneApp;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SmartCaneApp needs your location to show your position and calculate walking routes.";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SmartCaneApp/App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

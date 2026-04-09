@@ -139,15 +139,34 @@ struct UserProfileView: View {
                             .accessibilityHidden(true)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(place.name)
+                            Text(place.displayTitle)
                                 .font(.subheadline.weight(.semibold))
-                            Text(place.subtitle)
+                            Text(place.displaySubtitle)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
                         }
 
                         Spacer(minLength: 8)
+
+                        Menu {
+                            ForEach(locationManager.commonFavoriteLabels, id: \.self) { label in
+                                Button(label) {
+                                    locationManager.updateFavoritePlaceLabel(place, label: label == "Other" ? nil : label)
+                                }
+                            }
+
+                            Button("Remove saved location", role: .destructive) {
+                                locationManager.removeFavoritePlace(place)
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(Color(red: 0.18, green: 0.34, blue: 0.37))
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Edit \(place.displayTitle)")
+                        .accessibilityHint("Change label or remove this saved location.")
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -157,7 +176,7 @@ struct UserProfileView: View {
                             .stroke(Color.white.opacity(0.55), lineWidth: 1)
                     )
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Saved location \(place.name), \(place.subtitle)")
+                    .accessibilityLabel("Saved location \(place.displayTitle), \(place.displaySubtitle)")
                 }
             }
         }
@@ -208,7 +227,7 @@ struct UserProfileView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(connectionManager.caneState.connectionStatus.rawValue)
                         .font(.subheadline.weight(.semibold))
-                    Text("Battery \(connectionManager.caneState.batteryPercentage) percent")
+                    Text(connectionManager.caneState.statusMessage)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -223,7 +242,7 @@ struct UserProfileView: View {
                     .stroke(Color.white.opacity(0.55), lineWidth: 1)
             )
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Connected device status \(connectionManager.caneState.connectionStatus.rawValue). Battery \(connectionManager.caneState.batteryPercentage) percent")
+            .accessibilityLabel("Connected device status \(connectionManager.caneState.connectionStatus.rawValue). \(connectionManager.caneState.statusMessage)")
         }
     }
 

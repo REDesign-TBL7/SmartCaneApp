@@ -17,6 +17,7 @@ struct NavigationView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var locationManager: LocationManager
     @FocusState private var isSearchFieldFocused: Bool
+    @State private var pendingFavoriteResult: LocationSearchResult?
 
     var body: some View {
         ZStack {
@@ -51,13 +52,52 @@ struct NavigationView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
-                .padding(.bottom, 28)
+                .padding(.bottom, 92)
+            }
+
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    VoiceCommandButton()
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 18)
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             locationManager.prepareForSearchEntry()
+        }
+        .onChange(of: locationManager.activeDestination?.id) { newDestinationID in
+            if newDestinationID != nil {
+                dismiss()
+            }
+        }
+        .confirmationDialog(
+            "Save this location as",
+            isPresented: Binding(
+                get: { pendingFavoriteResult != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        pendingFavoriteResult = nil
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            ForEach(locationManager.commonFavoriteLabels, id: \.self) { label in
+                Button(label) {
+                    savePendingFavorite(label: label == "Other" ? nil : label)
+                }
+            }
+
+            Button("Cancel", role: .cancel) {
+                pendingFavoriteResult = nil
+            }
+        } message: {
+            Text("Choose a short label so it is easy to use later by voice.")
         }
     }
 
@@ -137,8 +177,10 @@ struct NavigationView: View {
                     .accessibilityHint("Starts navigation to this destination.")
 
                     Button {
-                        Task {
-                            await locationManager.toggleSearchResultFavorite(result)
+                        if let savedPlace = favoritePlace(for: result) {
+                            locationManager.removeFavoritePlace(savedPlace)
+                        } else {
+                            pendingFavoriteResult = result
                         }
                     } label: {
                         Image(systemName: favoriteIconName(for: result))
@@ -147,8 +189,8 @@ struct NavigationView: View {
                             .frame(width: 28, height: 28)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(favoriteIconName(for: result) == "star.fill" ? "Remove \(result.displayName) from favourites" : "Save \(result.displayName) to favourites")
-                    .accessibilityHint("Toggles whether this destination is saved.")
+                    .accessibilityLabel(favoriteIconName(for: result) == "star.fill" ? "Remove \(result.displayName) from saved locations" : "Save \(result.displayName)")
+                    .accessibilityHint(favoriteIconName(for: result) == "star.fill" ? "Removes this saved location." : "Opens quick labels like Home, Work, or School.")
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -178,21 +220,47 @@ struct NavigationView: View {
                 helperCard("No saved places yet. Use the star next to a search result to save one.")
             } else {
                 ForEach(locationManager.favoritePlaces) { place in
-                    Button {
-                        locationManager.selectFavorite(place)
-                        dismiss()
-                    } label: {
-                        placeRow(
-                            title: place.name,
-                            subtitle: place.subtitle,
-                            systemImage: place.systemImageName
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Saved place \(place.name)")
-                    .accessibilityHint("Starts navigation to this saved place.")
+                    savedPlaceRow(place)
                 }
             }
+        }
+    }
+
+    private func savedPlaceRow(_ place: SavedPlace) -> some View {
+        HStack(spacing: 10) {
+            Button {
+                locationManager.selectFavorite(place)
+                dismiss()
+            } label: {
+                placeRow(
+                    title: place.displayTitle,
+                    subtitle: place.displaySubtitle,
+                    systemImage: place.systemImageName
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Saved place \(place.displayTitle)")
+            .accessibilityHint("Starts navigation to this saved place.")
+
+            Menu {
+                ForEach(locationManager.commonFavoriteLabels, id: \.self) { label in
+                    Button(label) {
+                        locationManager.updateFavoritePlaceLabel(place, label: label == "Other" ? nil : label)
+                    }
+                }
+
+                Button("Remove saved location", role: .destructive) {
+                    locationManager.removeFavoritePlace(place)
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color(red: 0.18, green: 0.34, blue: 0.37))
+                    .frame(width: 44, height: 44)
+                    .background(Color.white.opacity(0.92), in: Circle())
+            }
+            .accessibilityLabel("Edit \(place.displayTitle)")
+            .accessibilityHint("Change label or remove this saved location.")
         }
     }
 
@@ -280,13 +348,26 @@ struct NavigationView: View {
     }
 
     private func favoriteIconName(for result: LocationSearchResult) -> String {
+        favoritePlace(for: result) == nil ? "star" : "star.fill"
+    }
+
+    private func favoritePlace(for result: LocationSearchResult) -> SavedPlace? {
         let displayName = result.displayName.lowercased()
-        let isSaved = locationManager.favoritePlaces.contains { place in
+        return locationManager.favoritePlaces.first { place in
             let savedDisplayName = "\(place.name), \(place.subtitle)".lowercased()
             return savedDisplayName == displayName || place.name.lowercased() == result.title.lowercased()
         }
+    }
 
-        return isSaved ? "star.fill" : "star"
+    private func savePendingFavorite(label: String?) {
+        guard let pendingFavoriteResult else {
+            return
+        }
+
+        Task {
+            await locationManager.toggleSearchResultFavorite(pendingFavoriteResult, label: label)
+            self.pendingFavoriteResult = nil
+        }
     }
 }
 
@@ -299,5 +380,8 @@ struct NavigationView_Previews: PreviewProvider {
 
         return NavigationView()
             .environmentObject(LocationManager(profileManager: profileManager, connectionManager: connectionManager, fusionManager: fusionManager))
+            .environmentObject(connectionManager)
+            .environmentObject(SpeechManager())
+            .environmentObject(VoiceCommandManager())
     }
 }

@@ -38,6 +38,8 @@ final class SpeechManager: NSObject, ObservableObject {
             synthesizer.stopSpeaking(at: .immediate)
         }
 
+        configurePlaybackSession()
+
         let utterance = AVSpeechUtterance(string: message)
         utterance.rate = 0.48
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
@@ -47,7 +49,7 @@ final class SpeechManager: NSObject, ObservableObject {
         lastAnnouncementDate = Date()
     }
 
-    /// Speaks urgent events like disconnects or low battery and interrupts older speech.
+    /// Speaks urgent events like disconnects and interrupts older speech.
     func speakUrgent(_ message: String) {
         speak(message, interrupt: true)
     }
@@ -66,5 +68,18 @@ final class SpeechManager: NSObject, ObservableObject {
         #if canImport(UIKit)
         UIAccessibility.post(notification: .announcement, argument: message)
         #endif
+    }
+
+    private func configurePlaybackSession() {
+        let audioSession = AVAudioSession.sharedInstance()
+
+        do {
+            try audioSession.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+            try audioSession.setActive(true, options: [])
+        } catch {
+            // If audio session setup fails, still attempt speech. The synthesizer
+            // may work under the system default session, and failing silently here
+            // would make the Read button unusable.
+        }
     }
 }

@@ -34,6 +34,7 @@ struct ResolvedLocation: Identifiable, Hashable, Codable {
 /// A saved location shown in the favourites list.
 struct SavedPlace: Identifiable, Hashable, Codable {
     var id = UUID()
+    let label: String?
     let name: String
     let subtitle: String
     let systemImageName: String
@@ -42,6 +43,18 @@ struct SavedPlace: Identifiable, Hashable, Codable {
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    var displayTitle: String {
+        label ?? name
+    }
+
+    var displaySubtitle: String {
+        guard let label, !label.isEmpty else {
+            return subtitle
+        }
+
+        return subtitle.isEmpty ? name : "\(name), \(subtitle)"
     }
 }
 
@@ -108,6 +121,7 @@ final class LocationManager: NSObject, ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
     private var hasRecordedDistanceForCurrentTrip = false
     private var currentRouteSummary = "Route pending"
+    private var hasRequestedAlwaysLocationAccess = false
 
     var hasActiveNavigation: Bool {
         activeDestination != nil
@@ -119,6 +133,10 @@ final class LocationManager: NSObject, ObservableObject {
 
     var favoriteCountText: String {
         String(favoritePlaces.count)
+    }
+
+    var commonFavoriteLabels: [String] {
+        ["Home", "Work", "School", "Transit", "Clinic", "Other"]
     }
 
     private func bindProfileData() {
@@ -147,6 +165,8 @@ final class LocationManager: NSObject, ObservableObject {
 
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        configureBackgroundLocationUpdatesIfAllowed()
+        locationManager.pausesLocationUpdatesAutomatically = false
 
         searchCompleter.delegate = self
         searchCompleter.resultTypes = [.address, .pointOfInterest]
@@ -156,6 +176,14 @@ final class LocationManager: NSObject, ObservableObject {
         requestLocationAccess()
     }
 
+    /// `allowsBackgroundLocationUpdates` crashes if the app bundle is missing
+    /// `UIBackgroundModes` with the `location` value. Keep this check here so
+    /// future project setting changes fail safely instead of crashing on launch.
+    private func configureBackgroundLocationUpdatesIfAllowed() {
+        let backgroundModes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String]
+        locationManager.allowsBackgroundLocationUpdates = backgroundModes?.contains("location") == true
+    }
+
     /// Starts the normal iOS location permission flow.
     func requestLocationAccess() {
         let status = locationManager.authorizationStatus
@@ -163,9 +191,16 @@ final class LocationManager: NSObject, ObservableObject {
         switch status {
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
-        case .authorizedAlways, .authorizedWhenInUse:
+        case .authorizedAlways:
             locationManager.startUpdatingLocation()
             locationManager.requestLocation()
+        case .authorizedWhenInUse:
+            locationManager.startUpdatingLocation()
+            locationManager.requestLocation()
+            if !hasRequestedAlwaysLocationAccess {
+                hasRequestedAlwaysLocationAccess = true
+                locationManager.requestAlwaysAuthorization()
+            }
         case .denied, .restricted:
             break
         @unknown default:
@@ -196,7 +231,7 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     /// Toggles one autocomplete result directly from the search list.
-    func toggleSearchResultFavorite(_ result: LocationSearchResult) async {
+    func toggleSearchResultFavorite(_ result: LocationSearchResult, label: String? = nil) async {
         if let existingPlace = matchingFavoritePlace(for: result) {
             removeFavoritePlace(existingPlace)
             return
@@ -204,7 +239,7 @@ final class LocationManager: NSObject, ObservableObject {
 
         do {
             let resolvedDestination = try await resolveSearchResult(result)
-            addResolvedDestinationToFavorites(resolvedDestination)
+            addResolvedDestinationToFavorites(resolvedDestination, label: label)
         } catch {
             return
         }
@@ -244,6 +279,63 @@ final class LocationManager: NSObject, ObservableObject {
         }
     }
 
+    /// Starts navigation from a spoken place name, for example "search for Raffles MRT".
+    /// This bypasses the visual autocomplete list so voice mode stays low-friction.
+    func startNavigationFromVoiceQuery(_ query: String) async -> String {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else {
+            return "Please say a destination after search for."
+        }
+
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = trimmedQuery
+        if let currentLocationCoordinate {
+            request.region = MKCoordinateRegion(
+                center: currentLocationCoordinate,
+                latitudinalMeters: 12000,
+                longitudinalMeters: 12000
+            )
+        } else {
+            request.region = searchRegion(around: defaultSearchCenter)
+        }
+        request.resultTypes = [.address, .pointOfInterest]
+
+        do {
+            let response = try await MKLocalSearch(request: request).start()
+            guard let firstItem = response.mapItems.first,
+                  let coordinate = firstItem.placemark.location?.coordinate else {
+                return "I could not find \(trimmedQuery). Please try another place name."
+            }
+
+            let destination = ResolvedLocation(
+                name: firstItem.name ?? trimmedQuery,
+                subtitle: firstItem.placemark.title ?? "",
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude
+            )
+
+            activateNavigation(to: destination)
+            await updateRouteForActiveDestination()
+            return "Starting navigation to \(destination.name)."
+        } catch {
+            return "I could not find \(trimmedQuery). Please try another place name."
+        }
+    }
+
+    /// Starts navigation to a saved place by spoken name, such as "home".
+    func selectFavorite(named spokenName: String) -> Bool {
+        let normalizedName = spokenName.normalizedVoiceCommandText
+        guard let place = favoritePlaces.first(where: { place in
+            place.name.normalizedVoiceCommandText == normalizedName
+            || place.label?.normalizedVoiceCommandText == normalizedName
+        }) else {
+            return false
+        }
+
+        selectFavorite(place)
+        return true
+    }
+
     /// Returns the app to the empty navigation state.
     func clearNavigation() {
         activeDestination = nil
@@ -263,16 +355,41 @@ final class LocationManager: NSObject, ObservableObject {
         searchCompleter.queryFragment = trimmedQuery
     }
 
-    private func addResolvedDestinationToFavorites(_ resolvedDestination: ResolvedLocation) {
+    func removeFavoritePlace(_ place: SavedPlace) {
+        favoritePlaces.removeAll { savedPlace in
+            savedPlace.id == place.id
+        }
+        profileManager.updateFavoritePlaces(favoritePlaces)
+    }
+
+    func updateFavoritePlaceLabel(_ place: SavedPlace, label: String?) {
+        guard let index = favoritePlaces.firstIndex(where: { $0.id == place.id }) else {
+            return
+        }
+
+        favoritePlaces[index] = SavedPlace(
+            id: place.id,
+            label: label,
+            name: place.name,
+            subtitle: place.subtitle,
+            systemImageName: systemImageName(forFavoriteLabel: label),
+            latitude: place.latitude,
+            longitude: place.longitude
+        )
+        profileManager.updateFavoritePlaces(favoritePlaces)
+    }
+
+    private func addResolvedDestinationToFavorites(_ resolvedDestination: ResolvedLocation, label: String? = nil) {
         guard matchingFavoritePlace(for: resolvedDestination) == nil else {
             return
         }
 
         favoritePlaces.insert(
             SavedPlace(
+                label: label,
                 name: resolvedDestination.name,
                 subtitle: resolvedDestination.subtitle.isEmpty ? "Saved by user" : resolvedDestination.subtitle,
-                systemImageName: "star.fill",
+                systemImageName: systemImageName(forFavoriteLabel: label),
                 latitude: resolvedDestination.latitude,
                 longitude: resolvedDestination.longitude
             ),
@@ -282,18 +399,28 @@ final class LocationManager: NSObject, ObservableObject {
         profileManager.updateFavoritePlaces(favoritePlaces)
     }
 
-    private func removeFavoritePlace(_ place: SavedPlace) {
-        favoritePlaces.removeAll { savedPlace in
-            savedPlace.id == place.id
-        }
-        profileManager.updateFavoritePlaces(favoritePlaces)
-    }
-
     private func matchingFavoritePlace(for result: LocationSearchResult) -> SavedPlace? {
         favoritePlaces.first { place in
             let savedDisplayName = "\(place.name), \(place.subtitle)".lowercased()
             let resultDisplayName = result.displayName.lowercased()
             return savedDisplayName == resultDisplayName || place.name.lowercased() == result.title.lowercased()
+        }
+    }
+
+    private func systemImageName(forFavoriteLabel label: String?) -> String {
+        switch label?.normalizedVoiceCommandText {
+        case "home":
+            return "house.fill"
+        case "work":
+            return "briefcase.fill"
+        case "school":
+            return "graduationcap.fill"
+        case "transit":
+            return "tram.fill"
+        case "clinic":
+            return "cross.case.fill"
+        default:
+            return "star.fill"
         }
     }
 
@@ -455,7 +582,10 @@ final class LocationManager: NSObject, ObservableObject {
         if let currentLocationCoordinate,
            let activeDestination {
             let desiredBearing = bearingDegrees(from: currentLocationCoordinate, to: activeDestination.coordinate)
-            let delta = normalizedBearingDelta(desiredBearing: desiredBearing, heading: connectionManager.caneState.headingDegrees)
+            let delta = normalizedBearingDelta(
+                desiredBearing: desiredBearing,
+                heading: connectionManager.caneState.motorUnitHeadingDegrees
+            )
 
             if delta > 18 {
                 return .right

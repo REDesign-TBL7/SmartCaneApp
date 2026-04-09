@@ -46,6 +46,9 @@ final class CaneConnectionManager: ObservableObject {
     private var heartbeatTask: Task<Void, Never>?
     private var receiveTask: Task<Void, Never>?
     private var frameHandler: ((Data) -> Void)?
+    private var savedRouteCommand: (command: NavigationCommand, instructionText: String)?
+    private var isSafetyOverrideActive = false
+    private var isVisionSafetyOverrideActive = false
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var latestPhoneLocation: (latitude: Double, longitude: Double)?
@@ -57,7 +60,6 @@ final class CaneConnectionManager: ObservableObject {
 
     init() {
         caneState.connectionStatus = .disconnected
-        caneState.batteryPercentage = 100
         caneState.currentInstruction = "No active navigation"
         caneState.currentNavigationCommand = .stop
         caneState.obstacleMessage = "No obstacles detected"
@@ -148,6 +150,79 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     func sendNavigationCommand(_ command: NavigationCommand, instructionText: String) {
+        if command == .stop {
+            savedRouteCommand = nil
+        } else {
+            savedRouteCommand = (command, instructionText)
+        }
+
+        sendEffectiveNavigationCommand(command, instructionText: instructionText)
+    }
+
+    func sendSafetyOverrideCommand(_ command: NavigationCommand, instructionText: String) {
+        sendRawNavigationCommand(command, instructionText: instructionText)
+        isSafetyOverrideActive = true
+    }
+
+    func setVisionSafetyOverrideActive(_ isActive: Bool, reason: String) {
+        if isActive == isVisionSafetyOverrideActive, isSafetyOverrideActive {
+            return
+        }
+
+        isVisionSafetyOverrideActive = isActive
+        if isActive {
+            sendSafetyOverrideCommand(.stop, instructionText: reason)
+        } else {
+            reevaluateSafetyOverride()
+        }
+    }
+
+    func reevaluateSafetyOverride() {
+        if shouldForceStopForImmediateSafety {
+            guard !isSafetyOverrideActive || caneState.currentNavigationCommand != .stop else {
+                return
+            }
+
+            sendSafetyOverrideCommand(.stop, instructionText: "Stopping for safety")
+            return
+        }
+
+        guard isSafetyOverrideActive else {
+            return
+        }
+
+        isSafetyOverrideActive = false
+        if let savedRouteCommand {
+            sendRawNavigationCommand(savedRouteCommand.command, instructionText: savedRouteCommand.instructionText)
+        } else {
+            sendRawNavigationCommand(.stop, instructionText: "Safety override cleared")
+        }
+    }
+
+    private var shouldForceStopForImmediateSafety: Bool {
+        if caneState.faultCode != .none {
+            return true
+        }
+
+        if isVisionSafetyOverrideActive {
+            return true
+        }
+
+        let obstacle = caneState.nearestObstacleCm
+        return obstacle >= 0 && obstacle < 45
+    }
+
+    private func sendEffectiveNavigationCommand(_ command: NavigationCommand, instructionText: String) {
+        if shouldForceStopForImmediateSafety {
+            sendSafetyOverrideCommand(.stop, instructionText: "Stopping for safety")
+            return
+        }
+
+        isSafetyOverrideActive = false
+        sendRawNavigationCommand(command, instructionText: instructionText)
+    }
+
+    private func sendRawNavigationCommand(_ command: NavigationCommand, instructionText: String) {
         caneState.currentNavigationCommand = command
         caneState.currentInstruction = instructionText
 
@@ -243,17 +318,33 @@ final class CaneConnectionManager: ObservableObject {
             return
         }
 
-        if let batteryPercentage = telemetry.batteryPercentage {
-            caneState.batteryPercentage = max(0, min(100, batteryPercentage))
-        }
-
         if let obstacleDistanceCm = telemetry.obstacleDistanceCm {
             caneState.nearestObstacleCm = obstacleDistanceCm
             caneState.obstacleMessage = obstacleDistanceCm < 0 ? "Obstacle sensor unavailable" : "Nearest obstacle \(Int(obstacleDistanceCm)) cm"
         }
 
-        if let headingDegrees = telemetry.headingDegrees {
-            caneState.headingDegrees = headingDegrees
+        if let motorImuAvailable = telemetry.motorImuAvailable {
+            caneState.isMotorUnitIMUAvailable = motorImuAvailable
+        }
+
+        if let motorImuHeadingDegrees = telemetry.motorImuHeadingDegrees {
+            caneState.motorUnitHeadingDegrees = motorImuHeadingDegrees
+            caneState.isMotorUnitIMUAvailable = telemetry.motorImuAvailable ?? true
+        } else if let headingDegrees = telemetry.headingDegrees {
+            // Backward-compatible fallback for older Pi telemetry.
+            caneState.motorUnitHeadingDegrees = headingDegrees
+        }
+
+        if let handleImuAvailable = telemetry.handleImuAvailable {
+            caneState.isHandleIMUAvailable = handleImuAvailable
+        }
+
+        if let handleImuHeadingDegrees = telemetry.handleImuHeadingDegrees {
+            caneState.handleIMUHeadingDegrees = handleImuHeadingDegrees
+        }
+
+        if let handleImuGyroZDegreesPerSecond = telemetry.handleImuGyroZDegreesPerSecond {
+            caneState.handleIMUGyroZDegreesPerSecond = handleImuGyroZDegreesPerSecond
         }
 
         if let gpsFixStatus = telemetry.gpsFixStatus {
@@ -273,6 +364,8 @@ final class CaneConnectionManager: ObservableObject {
         } else if caneState.connectionStatus == .connected {
             caneState.statusMessage = connectionStatusSummary(connectedTo: selectedEndpoint)
         }
+
+        reevaluateSafetyOverride()
     }
 
     private func connectionStatusSummary(connectedTo endpoint: EndpointProfile) -> String {
