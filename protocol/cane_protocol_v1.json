@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Smart Cane Protocol v1",
+  "type": "object",
+  "definitions": {
+    "discreteCommand": {
+      "type": "string",
+      "enum": ["LEFT", "RIGHT", "FORWARD", "STOP"]
+    },
+    "gpsFixStatus": {
+      "type": "string",
+      "enum": ["NO_FIX", "FIX_2D", "FIX_3D"]
+    },
+    "faultCode": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "IMU_UNAVAILABLE",
+        "HANDLE_IMU_UNAVAILABLE",
+        "MOTOR_IMU_UNAVAILABLE",
+        "GPS_UNAVAILABLE",
+        "MOTOR_DRIVER_FAULT",
+        "ULTRASONIC_FAULT",
+        "HEARTBEAT_TIMEOUT"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["type", "protocolVersion", "timestampMs", "command"],
+      "properties": {
+        "type": { "const": "DISCRETE_CMD" },
+        "protocolVersion": { "const": 1 },
+        "timestampMs": { "type": "integer" },
+        "command": { "$ref": "#/definitions/discreteCommand" },
+        "instructionText": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "protocolVersion", "timestampMs", "heartbeat"],
+      "properties": {
+        "type": { "const": "HEARTBEAT" },
+        "protocolVersion": { "const": 1 },
+        "timestampMs": { "type": "integer" },
+        "heartbeat": { "type": "boolean" },
+        "vlmSummary": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "type",
+        "protocolVersion",
+        "timestampMs",
+        "obstacleDistanceCm",
+        "motorImuAvailable",
+        "handleImuAvailable",
+        "gpsFixStatus",
+        "faultCode"
+      ],
+      "properties": {
+        "type": { "const": "TELEMETRY" },
+        "protocolVersion": { "const": 1 },
+        "timestampMs": { "type": "integer" },
+        "obstacleDistanceCm": { "type": "number" },
+        "motorImuAvailable": { "type": "boolean" },
+        "motorImuHeadingDegrees": { "type": ["number", "null"] },
+        "motorImuPitchDegrees": { "type": ["number", "null"] },
+        "motorImuRollDegrees": { "type": ["number", "null"] },
+        "handleImuAvailable": { "type": "boolean" },
+        "handleImuHeadingDegrees": { "type": "number" },
+        "handleImuGyroZDegreesPerSecond": { "type": "number" },
+        "headingDegrees": { "type": ["number", "null"], "deprecated": true },
+        "gpsFixStatus": { "$ref": "#/definitions/gpsFixStatus" },
+        "faultCode": { "$ref": "#/definitions/faultCode" },
+        "statusMessage": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["type", "protocolVersion", "timestampMs", "jpegBase64"],
+      "properties": {
+        "type": { "const": "CAMERA_FRAME" },
+        "protocolVersion": { "const": 1 },
+        "timestampMs": { "type": "integer" },
+        "jpegBase64": { "type": "string" }
+      }
+    }
+  ]
+}
