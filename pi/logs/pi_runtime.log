@@ -1,0 +1,899 @@
+2026-04-09 17:26:16 INFO __main__: Starting SmartCane Pi runtime
+2026-04-09 17:26:16 INFO motor_controller: ESP32 serial connected on /dev/serial0 at 115200 baud
+2026-04-09 17:26:16 INFO motor_controller: Motor controller initialized: ESP32 motor link active on /dev/serial0
+2026-04-09 17:28:46 INFO __main__: Starting SmartCane Pi runtime
+2026-04-09 17:28:46 INFO motor_controller: ESP32 serial connected on /dev/serial0 at 115200 baud
+2026-04-09 17:28:46 INFO motor_controller: Motor controller initialized: ESP32 motor link active on /dev/serial0
+2026-04-09 17:42:13 INFO __main__: Starting SmartCane Pi runtime
+2026-04-09 17:42:13 INFO motor_controller: ESP32 serial connected on /dev/serial0 at 115200 baud
+2026-04-09 17:42:13 INFO motor_controller: Motor controller initialized: ESP32 motor link active on /dev/serial0
+2026-04-09 17:42:13 WARNING imu_manager: Handle IMU unavailable on I2C bus=1 addr=0x68: [Errno 5] Input/output error
+2026-04-09 17:42:13 INFO websockets.server: server listening on 0.0.0.0:8080
+2026-04-09 17:42:13 INFO __main__: WebSocket server listening on 0.0.0.0:8080
+2026-04-09 17:42:13 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:13 INFO motor_controller: Sent motor command to ESP32: STOP
+2026-04-09 17:42:13 DEBUG motor_controller: Motor command result command=STOP sent=True
+2026-04-09 17:42:13 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:14 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:14 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:14 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:14 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:14 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:14 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:15 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:15 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:15 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:15 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:15 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:15 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:16 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:16 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:16 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:16 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:16 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:16 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:17 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:17 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:17 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:17 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:17 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:17 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:18 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:18 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:18 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:18 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:18 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:18 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:19 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:19 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:19 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:19 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:19 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:19 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:20 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:20 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:20 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:20 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:20 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:20 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:21 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:21 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:21 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:21 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:21 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:21 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:22 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:22 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:22 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:22 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:22 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:22 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:23 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:23 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:23 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:23 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:23 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:23 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:23 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:23 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:23 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:23 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:23 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:23 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:24 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:24 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:24 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:24 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:24 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:24 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:25 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:25 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:25 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:25 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:25 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:25 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:26 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:26 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:26 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:26 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:26 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:26 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:27 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:27 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:27 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:27 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:27 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:27 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:28 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:28 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:28 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:28 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:28 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:28 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:29 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:29 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:29 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:29 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:29 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:29 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:30 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:30 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:30 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:30 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:30 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:30 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:31 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:31 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:31 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:31 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:31 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:31 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:32 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:32 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:32 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:32 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:32 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:32 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:33 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:33 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:33 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:33 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:33 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:33 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:34 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:34 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:34 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:34 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:34 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:34 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:35 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:35 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:35 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:35 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:35 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:35 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:35 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:35 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:35 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:35 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:35 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:35 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:36 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:36 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:36 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:36 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:36 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:36 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:37 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:37 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:37 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:37 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:37 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:37 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:38 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:38 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:38 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:38 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:38 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:38 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:39 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:39 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:39 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:39 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:39 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:39 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:40 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:40 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:40 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:40 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:40 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:40 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:41 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:41 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:41 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:41 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:41 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:41 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:42 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:42 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:42 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:42 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:42 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:42 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:43 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:43 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:43 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:43 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:43 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:43 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:44 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:44 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:44 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:44 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:44 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:44 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:45 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:45 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:45 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:45 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:45 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:45 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:46 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:46 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:46 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:46 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:46 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:46 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:47 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:47 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:47 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:47 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:47 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:47 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:47 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:47 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:47 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:47 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:47 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:47 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:48 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:48 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:48 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:48 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:48 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:48 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:49 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:49 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:49 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:49 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:49 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:49 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:50 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:50 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:50 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:50 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:50 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:50 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:51 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:51 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:51 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:51 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:51 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:51 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:52 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:52 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:52 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:52 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:52 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:52 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:53 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:53 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:53 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:53 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:53 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:53 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:54 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:54 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:54 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:54 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:54 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:54 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:55 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:55 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:55 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:55 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:55 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:55 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:56 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:56 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:56 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:56 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:56 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:56 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:57 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:57 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:57 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:57 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:57 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:57 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:58 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:58 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:58 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:58 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:58 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:58 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:59 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:59 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:59 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:59 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:59 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:59 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:59 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:59 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:59 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:42:59 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:42:59 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:42:59 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:00 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:00 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:00 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:00 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:00 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:00 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:01 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:01 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:01 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:01 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:01 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:01 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:02 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:02 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:02 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:02 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:02 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:02 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:03 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:03 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:03 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:03 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:03 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:03 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:04 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:04 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:04 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:04 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:04 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:04 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:05 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:05 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:05 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:05 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:05 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:05 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:06 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:06 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:06 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:06 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:06 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:06 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:07 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:07 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:07 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:07 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:07 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:07 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:08 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:08 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:08 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:08 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:08 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:08 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:09 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:09 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:09 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:09 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:09 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:09 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:10 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:10 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:10 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:10 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:10 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:10 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:11 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:11 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:11 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:11 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:11 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:11 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:12 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:12 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:12 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:12 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:12 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:12 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:12 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:12 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:12 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:12 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:12 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:12 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:13 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:13 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:13 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:13 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:13 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:13 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:13 DEBUG __main__: Safety forcing STOP, obstacle=-1.00 fault=ULTRASONIC_FAULT
+2026-04-09 17:43:13 DEBUG motor_controller: Skipping duplicate motor command STOP
+2026-04-09 17:43:13 DEBUG __main__: Telemetry sent obstacle=-1.00 motor_heading=None handle_heading=0.00 gps=FIX_3D fault=ULTRASONIC_FAULT
+2026-04-09 17:43:13 INFO websockets.server: server closing
+2026-04-09 17:43:13 INFO websockets.server: server closed
+2026-04-09 17:43:13 INFO __main__: Shutting down SmartCane Pi runtime
+2026-04-09 17:43:13 DEBUG motor_controller: Skipping duplicate motor command STOP
