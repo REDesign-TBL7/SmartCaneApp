@@ -1,7 +1,7 @@
 # Pi Runtime
 
-Python runtime for Raspberry Pi Zero 2W cane comms, handle-mounted MPU9250 IMU
-data for camera deblur, Pi camera frame streaming, and ESP32 motor-command /
+Python runtime for Raspberry Pi Zero 2W cane comms, handle-mounted MPU6050 IMU
+data for camera deblur backup, Pi camera frame streaming, and ESP32 motor-command /
 sensor forwarding.
 
 ## Run
@@ -74,7 +74,28 @@ Provisioning scripts are included in `infra/pi-network/`:
 
 ## Hardware mapping
 
-- Handle MPU9250 over I2C bus 1 at address `0x68` on Pi, kept as backup for deblur
+- Handle MPU6050 over I2C bus 1 at address `0x68` on Pi, kept as backup for deblur
 - ESP32 handles motor DRV8313 pins in `esp32/motor_controller/motor_controller.ino`
 - ESP32 motor unit owns the motor-control IMU
 - ESP32 also owns the ultrasonic trigger/echo wiring for the demo
+
+## Handle IMU notes
+
+The Pi-side handle IMU is optional backup hardware. If the MPU6050 is not
+reachable over I2C, the runtime now logs a warning and continues instead of
+crashing.
+
+Override bus/address if needed:
+
+```bash
+export SMARTCANE_HANDLE_IMU_BUS=1
+export SMARTCANE_HANDLE_IMU_ADDR=0x68
+python src/main.py
+```
+
+Useful Pi checks:
+
+```bash
+ls /dev/i2c-*
+sudo i2cdetect -y 1
+```

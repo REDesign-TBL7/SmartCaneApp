@@ -37,7 +37,7 @@ sketch is in `esp32/motor_controller/motor_controller.ino`.
 IMU split:
 
 - ESP32 motor-unit IMU: motor/tip orientation for haptic guidance.
-- Pi handle IMU: handle motion for future camera deblur/stabilization.
+- Pi handle IMU (MPU6050 backup): handle motion for future camera deblur/stabilization.
 
 ## Connectivity behavior
 
