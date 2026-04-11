@@ -45,7 +45,7 @@ def install_packages() -> bool:
         logger.warning("Missing packages %s - need root to install", missing)
         return False
     
-    logger.info("Installing packages: %s", missing)
+    logger.info("Installing packages: %s (this may take a few minutes)", missing)
     try:
         run_cmd(["apt-get", "update", "-qq"])
         run_cmd(["apt-get", "install", "-y", "-qq"] + missing)
@@ -128,7 +128,7 @@ def configure_dhcpcd() -> None:
     content = Path(DHCPCD_CONF).read_text() if Path(DHCPCD_CONF).exists() else ""
     
     lines = content.splitlines()
-    filtered = [l for l in lines if l != marker and not l.startswith("interface {WLAN_IFACE}")]
+    filtered = [l for l in lines if l != marker and not l.startswith(f"interface {WLAN_IFACE}")]
     
     filtered.append("")
     filtered.append(marker)
@@ -156,14 +156,16 @@ def start_ap_services() -> None:
     run_cmd(["systemctl", "restart", "dnsmasq"])
 
 
-def setup_ap() -> bool:
+def setup_ap(do_install: bool = False) -> bool:
     if not is_root():
         logger.error("AP setup requires root. Run: sudo python src/main.py --setup")
         return False
     
     logger.info("Setting up AP mode (SSID=%s, IP=%s)", AP_SSID, AP_IP)
     
-    install_packages()
+    if do_install:
+        install_packages()
+    
     stop_services()
     reset_interface()
     
@@ -184,7 +186,7 @@ def setup_ap() -> bool:
     return False
 
 
-def ensure_network() -> bool:
+def ensure_network(do_install: bool = False) -> bool:
     if is_ap_active():
         logger.info("Network already active")
         return True
@@ -195,7 +197,7 @@ def ensure_network() -> bool:
         return False
     
     logger.info("Network not active, setting up...")
-    return setup_ap()
+    return setup_ap(do_install)
 
 
 def get_status() -> dict:

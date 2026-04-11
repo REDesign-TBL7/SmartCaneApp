@@ -133,8 +133,8 @@ async def run_server() -> None:
     logger.info("Starting SmartCane Pi runtime")
     write_pid()
     
-    if not ensure_network():
-        logger.error("Network setup failed. Run with sudo: sudo python src/main.py")
+    if not ensure_network(do_install=False):
+        logger.error("Network not ready. Run setup first: sudo infra/pi-network/setup.sh")
         remove_pid()
         sys.exit(1)
     
@@ -195,15 +195,15 @@ def main() -> None:
                 sys.exit(1)
             configure_logging()
             logger.info("Running AP setup...")
-            success = setup_ap()
+            success = setup_ap(do_install=True)
             sys.exit(0 if success else 1)
         elif arg == "--status":
             print_status()
         elif arg == "--help":
             print("Usage: python src/main.py [--setup|--status|--help]")
-            print("  No args: Start SmartCane runtime (auto-setup network if needed)")
-            print("  --setup: Configure AP mode and exit")
-            print("  --status: Print network status and exit")
+            print("  No args: Start runtime (assumes network already configured)")
+            print("  --setup: Configure AP mode (includes package install)")
+            print("  --status: Print network status")
             sys.exit(0)
         else:
             print(f"Unknown argument: {arg}")

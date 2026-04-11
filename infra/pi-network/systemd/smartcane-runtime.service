@@ -13,6 +13,7 @@ RestartSec=5
 User=root
 Environment=PYTHONUNBUFFERED=1
 Environment=SMARTCANE_LOG_LEVEL=INFO
+WatchdogSec=300
 TimeoutStartSec=300
 TimeoutStopSec=30
 
