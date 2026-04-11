@@ -21,7 +21,18 @@ infra/     Pi network provisioning and service install scripts
 
 ## Pi Setup (Full)
 
-### Quick Start (Manual)
+### Option 1: One-command Install (Recommended)
+
+On Pi, run as root:
+
+```bash
+cd /path/to/SmartCaneApp
+sudo infra/pi-network/setup.sh
+```
+
+This installs packages, sets up venv, configures network, and starts the service.
+
+### Option 2: Manual Setup
 
 ```bash
 cd pi
@@ -33,7 +44,7 @@ sudo .venv/bin/python src/main.py
 
 The runtime auto-configures AP mode on first run.
 
-### Auto-start on Boot (Recommended)
+### Option 3: Service with Custom Path
 
 ```bash
 # Replace with your actual repo path

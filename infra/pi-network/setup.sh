@@ -9,7 +9,8 @@ log() { echo "[SmartCane] $*"; }
 fail() { echo "[SmartCane ERROR] $*" >&2; exit 1; }
 
 install_packages() {
-    log "Installing required packages..."
+    log "Installing required packages (this may take a few minutes)..."
+    export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
     apt-get install -y -qq hostapd dnsmasq iw rfkill iproute2 dhcpcd5 python3-venv
 }
@@ -33,17 +34,10 @@ install_services() {
     chmod +x "${SCRIPT_DIR}/reset_network.sh"
     
     sed "s|__SMARTCANE_REPO_ROOT__|${REPO_ROOT}|g" \
-        "${SCRIPT_DIR}/systemd/smartcane-network-bootstrap.service" \
-        > /etc/systemd/system/smartcane-network-bootstrap.service
-    
-    sed "s|__SMARTCANE_REPO_ROOT__|${REPO_ROOT}|g" \
         "${SCRIPT_DIR}/systemd/smartcane-runtime.service" \
         > /etc/systemd/system/smartcane-runtime.service
     
-    install -m 644 "${SCRIPT_DIR}/systemd/smartcane-watchdog.service" \
-        /etc/systemd/system/smartcane-watchdog.service
-    
-    chmod 644 /etc/systemd/system/smartcane-*.service
+    chmod 644 /etc/systemd/system/smartcane-runtime.service
     
     cat > /etc/sudoers.d/smartcane-runtime <<EOF
 pi ALL=(root) NOPASSWD: ${SCRIPT_DIR}/smartcane_network.sh
@@ -52,9 +46,7 @@ EOF
     chmod 440 /etc/sudoers.d/smartcane-runtime
     
     systemctl daemon-reload
-    systemctl enable smartcane-network-bootstrap.service
     systemctl enable smartcane-runtime.service
-    systemctl enable smartcane-watchdog.service
 }
 
 configure_ap() {
@@ -62,11 +54,10 @@ configure_ap() {
     "${SCRIPT_DIR}/smartcane_network.sh" auto
 }
 
-start_services() {
-    log "Starting SmartCane services..."
-    systemctl restart smartcane-network-bootstrap.service
-    systemctl restart smartcane-runtime.service
-    systemctl restart smartcane-watchdog.service
+start_service() {
+    log "Starting SmartCane service..."
+    systemctl start smartcane-runtime.service
+    sleep 3
 }
 
 print_status() {
@@ -77,11 +68,10 @@ print_status() {
     log "WebSocket: ws://192.168.4.1:8080/ws"
     echo
     log "Commands:"
-    log "  Check status: ${SCRIPT_DIR}/smartcane_network.sh status"
-    log "  Diagnose:     ${SCRIPT_DIR}/diagnose.sh"
-    log "  Test conn:    ${SCRIPT_DIR}/test_connection.sh"
-    log "  Reset:        sudo ${SCRIPT_DIR}/reset_network.sh"
+    log "  Check status: sudo systemctl status smartcane-runtime"
     log "  View logs:    journalctl -u smartcane-runtime -f"
+    log "  Restart:      sudo systemctl restart smartcane-runtime"
+    log "  Reload:       sudo systemctl reload smartcane-runtime"
 }
 
 if [[ ${EUID} -ne 0 ]]; then
@@ -93,5 +83,6 @@ install_packages
 setup_python_venv
 install_services
 configure_ap
-start_services
+log "Setup done, starting service..."
+start_service
 print_status
