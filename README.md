@@ -36,17 +36,16 @@ The runtime auto-configures AP mode on first run.
 ### Auto-start on Boot (Recommended)
 
 ```bash
-cd /path/to/SmartCaneApp
+# Replace with your actual repo path
+REPO_ROOT=/home/pi/SmartCaneApp
 
 # Setup venv
-python3 -m venv pi/.venv
-source pi/.venv/bin/activate
-pip install -r pi/requirements.txt
-deactivate
+python3 -m venv $REPO_ROOT/pi/.venv
+$REPO_ROOT/pi/.venv/bin/pip install -r $REPO_ROOT/pi/requirements.txt
 
 # Install systemd service
 sudo cp infra/pi-network/systemd/smartcane-runtime.service /etc/systemd/system/
-sudo sed -i 's|__SMARTCANE_REPO_ROOT__|$(pwd)|g' /etc/systemd/system/smartcane-runtime.service
+sudo sed -i "s|__SMARTCANE_REPO_ROOT__|$REPO_ROOT|g" /etc/systemd/system/smartcane-runtime.service
 
 sudo systemctl daemon-reload
 sudo systemctl enable smartcane-runtime
