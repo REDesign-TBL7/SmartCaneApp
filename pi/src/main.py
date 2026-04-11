@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import sys
 
 import websockets
 
@@ -9,13 +10,14 @@ from comm_server import CommServer
 from gps_manager import GPSManager
 from imu_manager import HandleIMUManager
 from motor_controller import MotorController
+from network_manager import ensure_network, get_status, setup_ap
 from safety_manager import SafetyManager
 
 
 def configure_logging() -> None:
     os.makedirs("logs", exist_ok=True)
-    log_level_name = os.getenv("SMARTCANE_LOG_LEVEL", "DEBUG").upper()
-    log_level = getattr(logging, log_level_name, logging.DEBUG)
+    log_level_name = os.getenv("SMARTCANE_LOG_LEVEL", "INFO").upper()
+    log_level = getattr(logging, log_level_name, logging.INFO)
     formatter = logging.Formatter(
         "%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
@@ -119,6 +121,11 @@ async def camera_stream_loop(
 async def run_server() -> None:
     configure_logging()
     logger.info("Starting SmartCane Pi runtime")
+    
+    if not ensure_network():
+        logger.error("Network setup failed. Run with sudo: sudo python src/main.py")
+        sys.exit(1)
+    
     comm_server = CommServer()
     motor_controller = MotorController()
     handle_imu_manager = HandleIMUManager()
@@ -144,5 +151,54 @@ async def run_server() -> None:
         motor_controller.close()
 
 
-if __name__ == "__main__":
+def print_status() -> None:
+    status = get_status()
+    print("=== SmartCane Network Status ===")
+    print(f"Interface: {status['interface']}")
+    print(f"SSID: {status['ap_ssid']}")
+    print(f"IP: {status['ap_ip']}")
+    print(f"Root: {status['is_root']}")
+    print(f"Packages: {'OK' if status['packages_installed'] else 'MISSING'}")
+    print(f"Hostapd: {'active' if status['hostapd_active'] else 'inactive'}")
+    print(f"Dnsmasq: {'active' if status['dnsmasq_active'] else 'inactive'}")
+    print(f"IP Configured: {status['ip_configured']}")
+    
+    ready = all([
+        status['packages_installed'],
+        status['hostapd_active'],
+        status['dnsmasq_active'],
+        status['ip_configured'],
+    ])
+    print(f"\nStatus: {'READY' if ready else 'NOT READY'}")
+    sys.exit(0 if ready else 1)
+
+
+def main() -> None:
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg == "--setup":
+            if os.geteuid() != 0:
+                print("ERROR: --setup requires root. Run: sudo python src/main.py --setup")
+                sys.exit(1)
+            configure_logging()
+            logger.info("Running AP setup...")
+            success = setup_ap()
+            sys.exit(0 if success else 1)
+        elif arg == "--status":
+            print_status()
+        elif arg == "--help":
+            print("Usage: python src/main.py [--setup|--status|--help]")
+            print("  No args: Start SmartCane runtime (auto-setup network if needed)")
+            print("  --setup: Configure AP mode and exit")
+            print("  --status: Print network status and exit")
+            sys.exit(0)
+        else:
+            print(f"Unknown argument: {arg}")
+            print("Run: python src/main.py --help")
+            sys.exit(1)
+    
     asyncio.run(run_server())
+
+
+if __name__ == "__main__":
+    main()

@@ -26,10 +26,21 @@ cd pi
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python src/main.py
+sudo .venv/bin/python src/main.py
 ```
 
-WebSocket endpoint defaults to `ws://<pi-ip>:8080/ws`.
+The runtime auto-configures AP mode on first run. See `docs/pi-network-setup.md` for details.
+
+WebSocket endpoint: `ws://192.168.4.1:8080/ws`
+
+## Pi commands
+
+```bash
+sudo python src/main.py          # Start runtime (auto-setup network)
+sudo python src/main.py --setup  # Setup network only
+python src/main.py --status      # Check network status
+python src/main.py --help        # Show help
+```
 
 The Pi forwards safety-checked motor commands to the ESP32 over serial. The ESP32
 sketch is in `esp32/motor_controller/motor_controller.ino`.

@@ -1,16 +1,17 @@
 [Unit]
 Description=SmartCane Pi Runtime
-After=network-online.target smartcane-network-bootstrap.service
-Wants=network-online.target smartcane-network-bootstrap.service
+After=network.target
+Wants=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=__SMARTCANE_REPO_ROOT__/pi
 ExecStart=__SMARTCANE_REPO_ROOT__/pi/.venv/bin/python __SMARTCANE_REPO_ROOT__/pi/src/main.py
 Restart=always
-RestartSec=2
-User=pi
+RestartSec=3
+User=root
 Environment=PYTHONUNBUFFERED=1
+Environment=SMARTCANE_LOG_LEVEL=INFO
 
 [Install]
 WantedBy=multi-user.target

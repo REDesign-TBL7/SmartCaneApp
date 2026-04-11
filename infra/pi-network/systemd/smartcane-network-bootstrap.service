@@ -1,11 +1,10 @@
 [Unit]
-Description=SmartCane Network Bootstrap
-Before=network-online.target smartcane-runtime.service
-Wants=network-online.target
+Description=SmartCane Network Bootstrap (Deprecated - handled by main.py)
+Before=network.target
 
 [Service]
 Type=oneshot
-ExecStart=__SMARTCANE_REPO_ROOT__/infra/pi-network/smartcane_network.sh auto
+ExecStart=/bin/true
 RemainAfterExit=true
 
 [Install]

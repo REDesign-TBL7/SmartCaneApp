@@ -1,64 +1,119 @@
 # Pi Network Provisioning Guide
 
-This guide explains the direct Pi access-point networking flow.
+## Quick Start (Recommended)
 
-## Modes
-
-- `PI_ACCESS_POINT`: Pi always hosts its own Wi-Fi network for the iPhone app.
-
-## Prerequisites
-
-- Raspberry Pi OS with sudo access
-- Repo checked out on Pi
-- Wi-Fi adapter interface `wlan0` (default)
-
-## 1) Install And Start AP Mode
-
-1. Install the Pi services:
+From the Pi, one command sets up everything:
 
 ```bash
-cd /path/to/your/repo
+cd /path/to/SmartCaneApp/pi
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+sudo .venv/bin/python src/main.py
+```
+
+That's it. The Pi will:
+1. Auto-configure AP mode (SSID: `SmartCane`, Password: `SmartCane123`)
+2. Start WebSocket server on `ws://192.168.4.1:8080/ws`
+
+On iPhone: Join `SmartCane` WiFi, then open the app and tap Connect.
+
+## Commands
+
+```bash
+# Start runtime (auto-setup network if needed)
+sudo python src/main.py
+
+# Setup network only, don't start runtime
+sudo python src/main.py --setup
+
+# Check network status
+python src/main.py --status
+
+# Help
+python src/main.py --help
+```
+
+## Systemd Service (Auto-start on boot)
+
+```bash
+cd /path/to/SmartCaneApp
+
+# Create venv and install deps
 python3 -m venv pi/.venv
 source pi/.venv/bin/activate
 pip install -r pi/requirements.txt
 deactivate
 
-chmod +x infra/pi-network/smartcane_network.sh
-sudo infra/pi-network/smartcane_network.sh install
+# Install service
+sudo sed "s|__SMARTCANE_REPO_ROOT__|$(pwd)|g" \
+    infra/pi-network/systemd/smartcane-runtime.service \
+    > /etc/systemd/system/smartcane-runtime.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable smartcane-runtime
+sudo systemctl start smartcane-runtime
+
+# Check status
+sudo systemctl status smartcane-runtime
+journalctl -u smartcane-runtime -f
 ```
 
-2. The Pi boots into its own access point:
+## Environment Variables
 
-- SSID `SmartCane`
-- passphrase `SmartCane123`
-- Pi IP `192.168.4.1`
-- app WebSocket endpoint `ws://192.168.4.1:8080/ws`
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SMARTCANE_AP_SSID` | `SmartCane` | WiFi network name |
+| `SMARTCANE_AP_PASSPHRASE` | `SmartCane123` | WiFi password |
+| `SMARTCANE_AP_IP` | `192.168.4.1` | Pi IP address |
+| `WLAN_IFACE` | `wlan0` | WiFi interface |
+| `SMARTCANE_LOG_LEVEL` | `INFO` | Log level (DEBUG, INFO, WARNING) |
 
-3. On iPhone, join the Pi Wi-Fi network manually in `Settings > Wi-Fi`.
+## How It Works
 
-4. Open the app and tap `Connect`.
+1. `main.py` starts and calls `ensure_network()`
+2. If AP is already active → continues to runtime
+3. If not root → prints error and exits
+4. If root → configures AP mode automatically
 
-Expected result:
-- Pi advertises `SmartCane`
-- iPhone joins `SmartCane`
-- app connects directly to `192.168.4.1`
-
-## 2) Check AP Status
-
-```bash
-cd /path/to/your/repo
-chmod +x infra/pi-network/smartcane_network.sh
-infra/pi-network/smartcane_network.sh status
-```
-
-The script reads `/etc/smartcane/network_mode` so you can verify AP mode quickly.
-
-The installer derives the repo root from the script location, so the checkout does not need to live in `/opt/smart-cane`.
+The network setup:
+- Installs packages (hostapd, dnsmasq, etc.)
+- Configures hostapd for AP mode
+- Configures dnsmasq for DHCP
+- Configures dhcpcd for static IP
+- Starts all services
 
 ## Troubleshooting
 
-- If setup AP does not appear: `sudo systemctl status smartcane-network-bootstrap hostapd dnsmasq`
-- If app cannot connect: confirm the phone joined `SmartCane`
-- If the Pi AP does not come up: check `journalctl -u smartcane-network-bootstrap -u hostapd -u dnsmasq -n 100`
-- If app cannot connect: verify Pi runtime `sudo systemctl status smartcane-runtime`
-- If app still cannot connect: check `pi/logs/pi_runtime.log` and confirm the phone can reach `192.168.4.1`
+### Check status
+```bash
+python src/main.py --status
+```
+
+### Manual network reset
+```bash
+sudo systemctl restart hostapd dnsmasq dhcpcd
+```
+
+### Full network setup
+```bash
+sudo python src/main.py --setup
+```
+
+### View logs
+```bash
+journalctl -u smartcane-runtime -f
+# Or if running manually:
+tail -f pi/logs/pi_runtime.log
+```
+
+### AP not appearing
+1. Check WiFi interface: `ip link show`
+2. Check rfkill: `rfkill list`
+3. Unblock WiFi: `sudo rfkill unblock wifi`
+4. Re-run setup: `sudo python src/main.py --setup`
+
+### App cannot connect
+1. Confirm phone joined `SmartCane` WiFi
+2. Check Pi IP: `ip addr show wlan0 | grep 192.168.4`
+3. Test port: `nc -zv 192.168.4.1 8080`
