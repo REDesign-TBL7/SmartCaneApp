@@ -7,11 +7,14 @@ Wants=network.target
 Type=simple
 WorkingDirectory=__SMARTCANE_REPO_ROOT__/pi
 ExecStart=__SMARTCANE_REPO_ROOT__/pi/.venv/bin/python __SMARTCANE_REPO_ROOT__/pi/src/main.py
+ExecReload=__SMARTCANE_REPO_ROOT__/pi/.venv/bin/python -c "import os, signal; os.kill(int(open('/run/smartcane-runtime.pid').read()), signal.SIGHUP)"
 Restart=always
 RestartSec=3
 User=root
 Environment=PYTHONUNBUFFERED=1
 Environment=SMARTCANE_LOG_LEVEL=INFO
+WatchdogSec=30
+TimeoutStopSec=10
 
 [Install]
 WantedBy=multi-user.target

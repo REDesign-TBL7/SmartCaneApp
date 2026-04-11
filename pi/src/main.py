@@ -1,7 +1,9 @@
 import asyncio
 import logging
 import os
+import signal
 import sys
+from pathlib import Path
 
 import websockets
 
@@ -12,6 +14,14 @@ from imu_manager import HandleIMUManager
 from motor_controller import MotorController
 from network_manager import ensure_network, get_status, setup_ap
 from safety_manager import SafetyManager
+
+PID_FILE = Path("/run/smartcane-runtime.pid")
+
+def write_pid() -> None:
+    PID_FILE.write_text(str(os.getpid()))
+
+def remove_pid() -> None:
+    PID_FILE.unlink(missing_ok=True)
 
 
 def configure_logging() -> None:
@@ -121,9 +131,11 @@ async def camera_stream_loop(
 async def run_server() -> None:
     configure_logging()
     logger.info("Starting SmartCane Pi runtime")
+    write_pid()
     
     if not ensure_network():
         logger.error("Network setup failed. Run with sudo: sudo python src/main.py")
+        remove_pid()
         sys.exit(1)
     
     comm_server = CommServer()
@@ -148,6 +160,7 @@ async def run_server() -> None:
             )
     finally:
         logger.info("Shutting down SmartCane Pi runtime")
+        remove_pid()
         motor_controller.close()
 
 
