@@ -251,12 +251,11 @@ final class VoiceCommandManager: ObservableObject {
         }
 
         if commandText.contains("connect") {
-            if connectionManager.pairedDevice == nil {
-                speechManager.speak("No cane is set up yet. Use the setup cane button on screen first.", interrupt: true)
-            } else {
-                connectionManager.connectToCane()
-                speechManager.speak("Connecting to cane.", interrupt: true)
-            }
+            connectionManager.connectToCane()
+            speechManager.speak(
+                "Connecting to the cane over SmartCane Wi-Fi.",
+                interrupt: true
+            )
             return
         }
 
@@ -319,15 +318,15 @@ final class VoiceCommandManager: ObservableObject {
 
     private func statusSummary(connectionManager: CaneConnectionManager, locationManager: LocationManager) -> String {
         let pairing = connectionManager.pairedDevice.map {
-            "Paired with \($0.deviceName)."
-        } ?? "No cane paired yet."
+            "Cane network \($0.deviceName)."
+        } ?? "Join the SmartCane Wi-Fi network first."
         let connection = "Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased())."
         let navigation = locationManager.hasActiveNavigation
             ? "Navigating to \(locationManager.navigationStatusValue)."
             : "No active navigation."
         let connectionCommand = connectionManager.caneState.connectionStatus == .connected
             ? "Say disconnect cane to disconnect."
-            : connectionManager.pairedDevice != nil ? "Say connect cane to reconnect." : "Say connect cane to pair and connect."
+            : "Say connect cane after joining SmartCane Wi-Fi."
         let navigationCommand = locationManager.hasActiveNavigation
             ? "Say stop, or search for a new destination."
             : "Search for a destination."

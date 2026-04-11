@@ -25,6 +25,11 @@ class CommServer:
         self.device_name = self._current_device_name(default_name)
         self.device_id = os.getenv("SMARTCANE_DEVICE_ID", socket.gethostname())
 
+    def current_identity(self) -> tuple[str, str]:
+        self.device_name = self._current_device_name(self.device_name)
+        self.device_id = os.getenv("SMARTCANE_DEVICE_ID", self.device_id)
+        return self.device_name, self.device_id
+
     async def handler(self, websocket: WebSocketServerProtocol) -> None:
         self.clients.add(websocket)
         logger.info("App client connected from %s", websocket.remote_address)
@@ -66,7 +71,7 @@ class CommServer:
                     logger.info("Responding to DEBUG_PING echo=%s", response["echo"])
                     await websocket.send(json.dumps(response))
                 elif payload_type == "PAIR_HELLO":
-                    self.device_name = self._current_device_name(self.device_name)
+                    self.device_name, self.device_id = self.current_identity()
                     response = {
                         "type": "PAIR_INFO",
                         "protocolVersion": 1,

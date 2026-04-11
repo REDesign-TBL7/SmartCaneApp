@@ -37,6 +37,7 @@ struct PairedCaneDevice: Codable, Equatable {
     let deviceName: String
     let host: String
     let port: String
+    let wsPath: String?
     let pairedAt: Date
 
     var summaryText: String {

@@ -1,11 +1,10 @@
 # Pi Network Provisioning Guide
 
-This guide explains the supported onboarding and run-time networking flow.
+This guide explains the direct Pi access-point networking flow.
 
 ## Modes
 
-- `PI_SETUP_AP`: Pi hosts `SmartCaneSetup` for first-time onboarding.
-- `PHONE_HOTSPOT_CLIENT`: Pi joins the iPhone hotspot for normal use.
+- `PI_ACCESS_POINT`: Pi always hosts its own Wi-Fi network for the iPhone app.
 
 ## Prerequisites
 
@@ -13,7 +12,7 @@ This guide explains the supported onboarding and run-time networking flow.
 - Repo checked out on Pi
 - Wi-Fi adapter interface `wlan0` (default)
 
-## 1) First-time onboarding
+## 1) Install And Start AP Mode
 
 1. Install the Pi services:
 
@@ -24,62 +23,42 @@ source pi/.venv/bin/activate
 pip install -r pi/requirements.txt
 deactivate
 
-chmod +x infra/pi-network/install_runtime_service.sh
-sudo infra/pi-network/install_runtime_service.sh
+chmod +x infra/pi-network/smartcane_network.sh
+sudo infra/pi-network/smartcane_network.sh install
 ```
 
-2. If no hotspot config exists, the Pi will automatically boot into:
+2. The Pi boots into its own access point:
 
-- SSID `SmartCaneSetup`
-- passphrase `SmartCaneSetup123`
-- setup service `_smartcane-setup._tcp`
+- SSID `SmartCane`
+- passphrase `SmartCane123`
+- Pi IP `192.168.4.1`
+- app WebSocket endpoint `ws://192.168.4.1:8080/ws`
 
-3. Open the iPhone app and use `Set up cane`.
+3. On iPhone, join the Pi Wi-Fi network manually in `Settings > Wi-Fi`.
 
-4. In iPhone `Settings > Wi-Fi`, manually join:
-
-- SSID `SmartCaneSetup`
-- passphrase `SmartCaneSetup123`
-
-5. Return to the app. The app discovers the setup server over Bonjour / mDNS, sends hotspot credentials, and the Pi switches to hotspot mode.
-
-## 2) Configure phone hotspot client mode manually
-
-```bash
-cd /path/to/your/repo
-chmod +x infra/pi-network/setup_hotspot_client_mode.sh
-sudo infra/pi-network/setup_hotspot_client_mode.sh --ssid "<iPhone hotspot name>" --psk "<hotspot password>"
-```
-
-Shortcut:
-
-```bash
-infra/pi-network/use_mode.sh hotspot --ssid "<iPhone hotspot name>" --psk "<hotspot password>"
-```
+4. Open the app and tap `Connect`.
 
 Expected result:
-- Pi joins phone hotspot
-- Pi gets a DHCP address from the iPhone hotspot
-- Pi advertises `_smartcane._tcp` over Bonjour / mDNS
-- iOS app discovers the Pi by service name and device ID, then connects to the resolved WebSocket endpoint
+- Pi advertises `SmartCane`
+- iPhone joins `SmartCane`
+- app connects directly to `192.168.4.1`
 
-## 3) Check active mode
+## 2) Check AP Status
 
 ```bash
 cd /path/to/your/repo
-chmod +x infra/pi-network/check_network_mode.sh
-infra/pi-network/check_network_mode.sh
+chmod +x infra/pi-network/smartcane_network.sh
+infra/pi-network/smartcane_network.sh status
 ```
 
-The script reads `/etc/smartcane/network_mode` so you can verify hotspot mode quickly.
+The script reads `/etc/smartcane/network_mode` so you can verify AP mode quickly.
 
 The installer derives the repo root from the script location, so the checkout does not need to live in `/opt/smart-cane`.
 
 ## Troubleshooting
 
 - If setup AP does not appear: `sudo systemctl status smartcane-network-bootstrap hostapd dnsmasq`
-- If app setup fails: confirm the phone joined `SmartCaneSetup`
-- If the Pi never leaves setup mode: check `pi/logs/pi_runtime.log` for setup-server errors
-- If hotspot join fails: verify SSID/password and run `journalctl -u wpa_supplicant@wlan0 -n 100`
+- If app cannot connect: confirm the phone joined `SmartCane`
+- If the Pi AP does not come up: check `journalctl -u smartcane-network-bootstrap -u hostapd -u dnsmasq -n 100`
 - If app cannot connect: verify Pi runtime `sudo systemctl status smartcane-runtime`
-- If app cannot discover Pi: check `pi/logs/pi_runtime.log` for `Published mDNS service` and make sure `zeroconf` is installed in the Pi venv
+- If app still cannot connect: check `pi/logs/pi_runtime.log` and confirm the phone can reach `192.168.4.1`

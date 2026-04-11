@@ -229,7 +229,7 @@ struct UserProfileView: View {
                         .font(.subheadline.weight(.semibold))
 
                     if let pairedDevice = connectionManager.pairedDevice {
-                        Text("Device ID \(pairedDevice.deviceID)")
+                        Text("Direct endpoint \(pairedDevice.host):\(pairedDevice.port)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -238,21 +238,6 @@ struct UserProfileView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if connectionManager.pairedDevice != nil {
-                    Button(role: .destructive) {
-                        connectionManager.forgetPairedCane()
-                    } label: {
-                        Text("Forget paired cane")
-                            .font(.footnote.weight(.semibold))
-                            .frame(minHeight: 44)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.white.opacity(0.82), in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Forget paired cane")
-                    .accessibilityHint("Removes the saved Wi-Fi pairing so the app can pair with a different cane.")
                 }
             }
             .padding(16)

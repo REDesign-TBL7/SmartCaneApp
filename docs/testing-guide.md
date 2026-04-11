@@ -236,7 +236,7 @@ PY
 
 Replace `<pi-ip>` with:
 
-- the host resolved by Bonjour / mDNS for `_smartcane._tcp`
+- `192.168.4.1` after the iPhone joins the `SmartCane` Wi-Fi network
 
 Pass criteria:
 
@@ -254,18 +254,11 @@ Use the setup guide:
 docs/pi-network-setup.md
 ```
 
-Setup AP onboarding expected:
+Direct AP mode expected:
 
-- Pi advertises `SmartCaneSetup`
-- user joins `SmartCaneSetup` manually in iPhone Wi-Fi settings
-- app discovers `_smartcane-setup._tcp` and posts hotspot details to the resolved setup server
-- Pi switches to hotspot-client mode
-
-Phone hotspot mode expected:
-
-- Pi joins iPhone hotspot
-- Pi advertises `_smartcane._tcp` over Bonjour / mDNS
-- iOS app discovers the Pi and connects to the resolved WebSocket endpoint
+- Pi broadcasts the `SmartCane` Wi-Fi network
+- iPhone joins `SmartCane`
+- iOS app connects directly to `ws://192.168.4.1:8080/ws`
 
 Check runtime:
 
@@ -546,7 +539,7 @@ Setup:
 - ESP32 flashed with `motor_controller.ino`
 - ESP32 connected to Pi over USB serial
 - Pi runtime running
-- iPhone hotspot enabled and Pi joined to it
+- iPhone joined to the Pi `SmartCane` Wi-Fi network
 - Motors lifted or cane safely restrained
 
 Steps:
@@ -598,7 +591,7 @@ Setup:
 - ESP32 may be disconnected.
 - Motors must stay disconnected or safely restrained.
 - Pi runtime is running.
-- iPhone hotspot is on and the Pi has joined it.
+- iPhone is joined to the Pi `SmartCane` Wi-Fi network.
 
 Steps:
 
@@ -622,7 +615,7 @@ Fail signals:
 - App remains disconnected.
 - Pi never receives heartbeat.
 - App connects but no telemetry arrives.
-- Pi is not connected to the phone hotspot.
+- iPhone is not connected to `SmartCane`, or the Pi AP is not up.
 
 ### Phase B: Pi to ESP32 Only
 
@@ -871,7 +864,7 @@ For each test run, write down:
 
 - date and location
 - hardware setup
-- hotspot SSID used
+- Wi-Fi SSID used
 - ESP32 serial port
 - app destination searched
 - command observed on ESP32

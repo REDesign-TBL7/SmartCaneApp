@@ -7,18 +7,11 @@ final class CaneConnectionManager: ObservableObject {
     @Published var debugLogEntries: [DebugLogEntry] = []
     @Published var lastPingRoundTripMs: Int?
     @Published private(set) var pairedDevice: PairedCaneDevice?
-    @Published private(set) var isPairing = false
-
     private struct EndpointProfile {
         let host: String
         let port: String
+        let path: String
         let label: String
-    }
-
-    private struct DiscoveredCaneService {
-        let endpoint: EndpointProfile
-        let deviceID: String?
-        let deviceName: String?
     }
 
     private final class ProbeCompletionGate: @unchecked Sendable {
@@ -38,91 +31,13 @@ final class CaneConnectionManager: ObservableObject {
         }
     }
 
-    private final class BonjourDiscoverySession: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
-        private let browser = NetServiceBrowser()
-        private var services: [NetService] = []
-        private var discoveredServices: [DiscoveredCaneService] = []
-        private var continuation: CheckedContinuation<[DiscoveredCaneService], Never>?
-        private var timeoutWorkItem: DispatchWorkItem?
-
-        func discover(timeout: TimeInterval, continuation: CheckedContinuation<[DiscoveredCaneService], Never>) {
-            self.continuation = continuation
-            browser.delegate = self
-            browser.searchForServices(ofType: "_smartcane._tcp.", inDomain: "local.")
-
-            let timeoutWorkItem = DispatchWorkItem { [weak self] in
-                self?.finish()
-            }
-            self.timeoutWorkItem = timeoutWorkItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: timeoutWorkItem)
-        }
-
-        func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
-            services.append(service)
-            service.delegate = self
-            service.resolve(withTimeout: 1.5)
-        }
-
-        func netServiceDidResolveAddress(_ sender: NetService) {
-            let hostName = sender.hostName?
-                .trimmingCharacters(in: CharacterSet(charactersIn: "."))
-
-            guard let hostName, !hostName.isEmpty, sender.port > 0 else {
-                return
-            }
-
-            let txtRecord = sender.txtRecordData().map(NetService.dictionary(fromTXTRecord:)) ?? [:]
-            let deviceID = txtRecord["device_id"].flatMap { String(data: $0, encoding: .utf8) }
-            let deviceName = txtRecord["device_name"].flatMap { String(data: $0, encoding: .utf8) }
-
-            let endpoint = EndpointProfile(
-                host: hostName,
-                port: String(sender.port),
-                label: deviceName ?? sender.name
-            )
-            discoveredServices.append(
-                DiscoveredCaneService(
-                    endpoint: endpoint,
-                    deviceID: deviceID,
-                    deviceName: deviceName
-                )
-            )
-        }
-
-        func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
-            _ = errorDict
-        }
-
-        func netServiceBrowserDidStopSearch(_ browser: NetServiceBrowser) {
-            finish()
-        }
-
-        func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String : NSNumber]) {
-            _ = errorDict
-            finish()
-        }
-
-        private func finish() {
-            timeoutWorkItem?.cancel()
-            timeoutWorkItem = nil
-            browser.stop()
-            services.removeAll()
-
-            guard let continuation else {
-                return
-            }
-
-            self.continuation = nil
-            continuation.resume(returning: discoveredServices)
-            discoveredServices = []
-        }
-    }
 
     private enum PairingError: LocalizedError {
         case invalidURL
         case handshakeTimedOut
         case invalidResponse
         case missingDeviceInfo
+        case deviceMismatch
 
         var errorDescription: String? {
             switch self {
@@ -134,12 +49,24 @@ final class CaneConnectionManager: ObservableObject {
                 return "Unexpected pairing response"
             case .missingDeviceInfo:
                 return "Cane did not provide a device name or ID"
+            case .deviceMismatch:
+                return "Connected to the wrong cane"
             }
         }
     }
 
-    private let hotspotLabel = "Phone hotspot"
+    private struct EstablishedSession {
+        let session: URLSession
+        let task: URLSessionWebSocketTask
+        let endpoint: EndpointProfile
+        let pairedDevice: PairedCaneDevice
+    }
+
+    private let hotspotLabel = "SmartCane Wi-Fi"
     private let pairingStorageKey = "smart_cane_paired_device"
+    private let directAccessPointHost = "192.168.4.1"
+    private let directAccessPointPort = "8080"
+    private let directAccessPointPath = "/ws"
 
     private var currentEndpoint: EndpointProfile?
     private var webSocketTask: URLSessionWebSocketTask?
@@ -155,22 +82,22 @@ final class CaneConnectionManager: ObservableObject {
     private let decoder = JSONDecoder()
     private var latestPhoneLocation: (latitude: Double, longitude: Double)?
     private var pendingPingStartedAt: Date?
-    private var bonjourDiscoverySession: BonjourDiscoverySession?
-
     private let pathMonitor = NWPathMonitor()
     private let pathQueue = DispatchQueue(label: "smartcane.path.monitor")
     private var isWiFiActive = false
     private var isCellularActive = false
 
     init() {
-        pairedDevice = Self.loadPairedDevice(storageKey: pairingStorageKey)
+        pairedDevice = Self.defaultAccessPointDevice(
+            from: Self.loadPairedDevice(storageKey: pairingStorageKey)
+        )
         caneState.connectionStatus = .disconnected
         caneState.currentInstruction = "No active navigation"
         caneState.currentNavigationCommand = .stop
         caneState.obstacleMessage = "No obstacles detected"
         caneState.statusMessage = pairedDevice.map {
-            "Paired with \($0.deviceName). Ready to connect over Wi-Fi."
-        } ?? "No cane paired yet. Connect to pair over Wi-Fi."
+            "Join the \($0.deviceName) Wi-Fi network, then connect."
+        } ?? "Join the SmartCane Wi-Fi network, then connect."
         appendDebugLog("connection", "Manager initialized")
 
         pathMonitor.pathUpdateHandler = { [weak self] path in
@@ -195,7 +122,7 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     var networkModeDescription: String {
-        "Phone hotspot mode keeps cellular internet available while cane traffic stays local over Wi-Fi."
+        "Join the Pi-hosted SmartCane Wi-Fi network. The app connects directly to 192.168.4.1."
     }
 
     var activeEndpointLabel: String {
@@ -212,24 +139,18 @@ final class CaneConnectionManager: ObservableObject {
             return
         }
 
-        guard isWiFiActive else {
-            caneState.connectionStatus = .disconnected
-            caneState.statusMessage = "Turn on iPhone hotspot and make sure the Pi joins it first."
-            appendDebugLog("connection", "Connect blocked because Wi-Fi is not active")
-            return
-        }
-
         caneState.connectionStatus = .connecting
+        if !isWiFiActive {
+            appendDebugLog(
+                "network",
+                "Wi-Fi interface not reported by iOS path monitor; still attempting local hotspot connection"
+            )
+        }
         connectTask = Task { [weak self] in
             guard let self else {
                 return
             }
-
-            if let pairedDevice {
-                await self.connectUsingSavedPairing(pairedDevice)
-            } else {
-                await self.pairAndConnect()
-            }
+            await self.connectDirectAccessPoint()
         }
     }
 
@@ -263,10 +184,32 @@ final class CaneConnectionManager: ObservableObject {
             disconnectFromCane()
         }
 
-        pairedDevice = nil
+        pairedDevice = Self.defaultAccessPointDevice(from: nil)
         UserDefaults.standard.removeObject(forKey: pairingStorageKey)
-        caneState.statusMessage = "Saved cane pairing removed."
-        appendDebugLog("pairing", "Forgot saved cane pairing")
+        caneState.statusMessage = "Reset to the default SmartCane Wi-Fi endpoint."
+        appendDebugLog("pairing", "Reset cane connection to direct AP defaults")
+    }
+
+    func rememberProvisionedCane(deviceID: String, deviceName: String, wsPath: String = "/ws") {
+        let trimmedDeviceID = deviceID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDeviceName = deviceName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedDeviceID.isEmpty, !trimmedDeviceName.isEmpty else {
+            appendDebugLog("pairing", "Skipped provisional pairing save because setup response was incomplete")
+            return
+        }
+
+        let pairedDevice = PairedCaneDevice(
+            deviceID: trimmedDeviceID,
+            deviceName: trimmedDeviceName,
+            host: directAccessPointHost,
+            port: directAccessPointPort,
+            wsPath: wsPath,
+            pairedAt: Date()
+        )
+        savePairedDevice(pairedDevice)
+        caneState.statusMessage = "Saved \(trimmedDeviceName) at the direct SmartCane Wi-Fi endpoint."
+        appendDebugLog("pairing", "Saved direct AP device profile for \(pairedDevice.summaryText)")
     }
 
     func sendNavigationCommand(_ command: NavigationCommand, instructionText: String) {
@@ -352,98 +295,60 @@ final class CaneConnectionManager: ObservableObject {
         return obstacle >= 0 && obstacle < 45
     }
 
-    private func connectUsingSavedPairing(_ pairedDevice: PairedCaneDevice) async {
-        let discoveredEndpoint = await discoverEndpoint(matching: pairedDevice.deviceID)
-        let endpoint = discoveredEndpoint ?? EndpointProfile(
-            host: pairedDevice.host,
-            port: pairedDevice.port,
+    private func connectDirectAccessPoint() async {
+        let pairedAt = pairedDevice?.pairedAt ?? Date()
+        let endpoint = EndpointProfile(
+            host: directAccessPointHost,
+            port: directAccessPointPort,
+            path: directAccessPointPath,
             label: hotspotLabel
         )
-        caneState.statusMessage = "Connecting to \(pairedDevice.deviceName)"
-        appendDebugLog("pairing", "Using saved pairing for \(pairedDevice.summaryText)")
 
-        if let discoveredEndpoint {
-            appendDebugLog(
-                "mdns",
-                "Resolved \(pairedDevice.deviceName) to \(discoveredEndpoint.host):\(discoveredEndpoint.port) over Bonjour"
+        appendDebugLog(
+            "connection",
+            "Connecting directly to Pi AP at \(directAccessPointHost):\(directAccessPointPort)\(directAccessPointPath)"
+        )
+
+        do {
+            let established = try await establishRuntimeSession(
+                to: endpoint,
+                expectedDeviceID: nil,
+                pairedAt: pairedAt
             )
-            savePairedDevice(
-                PairedCaneDevice(
-                    deviceID: pairedDevice.deviceID,
-                    deviceName: pairedDevice.deviceName,
-                    host: discoveredEndpoint.host,
-                    port: discoveredEndpoint.port,
-                    pairedAt: pairedDevice.pairedAt
-                )
+            savePairedDevice(Self.defaultAccessPointDevice(from: established.pairedDevice))
+            adoptOpenWebSocket(
+                session: established.session,
+                task: established.task,
+                endpoint: established.endpoint
             )
-        } else {
-            appendDebugLog("mdns", "Bonjour lookup did not find \(pairedDevice.deviceName), falling back to saved resolved host")
+        } catch {
+            caneState.connectionStatus = .disconnected
+            caneState.statusMessage = "Join the SmartCane Wi-Fi network on iPhone, then try connecting again."
+            appendDebugLog("connection", "Direct AP connection failed: \(error.localizedDescription)")
         }
 
-        let reachable = await probeEndpoint(endpoint)
-        if reachable {
-            openWebSocket(to: endpoint)
-            connectTask = nil
-            return
-        }
-
-        appendDebugLog("pairing", "Saved pairing not reachable, retrying pairing handshake")
-        await pairAndConnect()
+        connectTask = nil
     }
 
-    private func pairAndConnect() async {
-        isPairing = true
-        defer {
-            isPairing = false
-            connectTask = nil
-        }
-
-        caneState.statusMessage = "Looking for cane on iPhone hotspot"
-        appendDebugLog("pairing", "Starting Wi-Fi pairing handshake")
-
-        let endpoints = await candidatePairingEndpoints()
-        appendDebugLog("mdns", "Trying \(endpoints.count) candidate endpoint(s) for pairing")
-
-        for endpoint in endpoints {
-            do {
-                let result = try await performPairingHandshake(to: endpoint)
-                pairedDevice = result.pairedDevice
-                savePairedDevice(result.pairedDevice)
-                appendDebugLog("pairing", "Paired with \(result.pairedDevice.summaryText)")
-                adoptOpenWebSocket(
-                    session: result.session,
-                    task: result.task,
-                    endpoint: EndpointProfile(
-                        host: result.pairedDevice.host,
-                        port: result.pairedDevice.port,
-                        label: endpoint.label
-                    )
-                )
-                return
-            } catch {
-                appendDebugLog(
-                    "pairing",
-                    "Pairing failed at \(endpoint.host):\(endpoint.port): \(error.localizedDescription)"
-                )
-            }
-        }
-
-        caneState.connectionStatus = .disconnected
-        caneState.statusMessage = "Could not pair with cane over Wi-Fi."
-    }
-
-    private func performPairingHandshake(
-        to endpoint: EndpointProfile
-    ) async throws -> (session: URLSession, task: URLSessionWebSocketTask, pairedDevice: PairedCaneDevice) {
-        guard let url = URL(string: "ws://\(endpoint.host):\(endpoint.port)/ws") else {
+    private func establishRuntimeSession(
+        to endpoint: EndpointProfile,
+        expectedDeviceID: String?,
+        pairedAt: Date
+    ) async throws -> EstablishedSession {
+        guard let url = makeWebSocketURL(for: endpoint) else {
             throw PairingError.invalidURL
+        }
+
+        appendDebugLog("connection", "Probing \(endpoint.host):\(endpoint.port)")
+        guard await probeEndpoint(endpoint) else {
+            throw PairingError.handshakeTimedOut
         }
 
         let session = URLSession(configuration: makeWiFiOnlyConfiguration())
         let task = session.webSocketTask(with: url)
         task.resume()
 
-        appendDebugLog("pairing", "Opened pairing socket to \(url.absoluteString)")
+        appendDebugLog("pairing", "Opened socket to \(url.absoluteString)")
         try await sendImmediately(.pairHello(clientName: "SmartCane iPhone"), on: task)
         appendDebugLog("pairing", "Sent PAIR_HELLO")
 
@@ -453,40 +358,62 @@ final class CaneConnectionManager: ObservableObject {
             throw PairingError.missingDeviceInfo
         }
 
-        return (
-            session,
-            task,
-            PairedCaneDevice(
+        if let expectedDeviceID, expectedDeviceID != deviceID {
+            task.cancel(with: .normalClosure, reason: nil)
+            throw PairingError.deviceMismatch
+        }
+
+        let resolvedPath = Self.normalizedPath(response.wsPath ?? endpoint.path, fallback: "/ws")
+        let resolvedEndpoint = EndpointProfile(
+            host: endpoint.host,
+            port: endpoint.port,
+            path: resolvedPath,
+            label: deviceName
+        )
+
+        return EstablishedSession(
+            session: session,
+            task: task,
+            endpoint: resolvedEndpoint,
+            pairedDevice: PairedCaneDevice(
                 deviceID: deviceID,
                 deviceName: deviceName,
                 host: endpoint.host,
                 port: endpoint.port,
-                pairedAt: Date()
+                wsPath: resolvedPath,
+                pairedAt: pairedAt
             )
         )
     }
 
     private func receivePairInfo(on task: URLSessionWebSocketTask) async throws -> InboundPairInfoMessage {
-        let message = try await withTimeout(seconds: 3.0) {
-            try await task.receive()
+        let deadline = Date().addingTimeInterval(3.0)
+
+        while Date() < deadline {
+            let secondsRemaining = max(0.1, deadline.timeIntervalSinceNow)
+            let message = try await withTimeout(seconds: secondsRemaining) {
+                try await task.receive()
+            }
+
+            let data: Data
+            switch message {
+            case .data(let payload):
+                data = payload
+            case .string(let text):
+                data = Data(text.utf8)
+            @unknown default:
+                continue
+            }
+
+            if let response = try? decoder.decode(InboundPairInfoMessage.self, from: data),
+               response.type == "PAIR_INFO" {
+                return response
+            }
+
+            appendDebugLog("pairing", "Skipping pre-handshake \(payloadTypeDescription(for: data)) message")
         }
 
-        let data: Data
-        switch message {
-        case .data(let payload):
-            data = payload
-        case .string(let text):
-            data = Data(text.utf8)
-        @unknown default:
-            throw PairingError.invalidResponse
-        }
-
-        guard let response = try? decoder.decode(InboundPairInfoMessage.self, from: data),
-              response.type == "PAIR_INFO" else {
-            throw PairingError.invalidResponse
-        }
-
-        return response
+        throw PairingError.handshakeTimedOut
     }
 
     private func withTimeout<T>(seconds: Double, operation: @escaping () async throws -> T) async throws -> T {
@@ -504,42 +431,6 @@ final class CaneConnectionManager: ObservableObject {
             group.cancelAll()
             return result
         }
-    }
-
-    private func candidatePairingEndpoints() async -> [EndpointProfile] {
-        let discovered = await discoverBonjourServices()
-        return discovered.map(\.endpoint)
-    }
-
-    private func discoverEndpoint(matching deviceID: String) async -> EndpointProfile? {
-        let discovered = await discoverBonjourServices()
-        if let matched = discovered.first(where: { $0.deviceID == deviceID }) {
-            return matched.endpoint
-        }
-        return nil
-    }
-
-    private func discoverBonjourServices() async -> [DiscoveredCaneService] {
-        appendDebugLog("mdns", "Browsing for _smartcane._tcp on local network")
-
-        let discovered = await withCheckedContinuation { (continuation: CheckedContinuation<[DiscoveredCaneService], Never>) in
-            let session = BonjourDiscoverySession()
-            bonjourDiscoverySession = session
-            session.discover(timeout: 2.0, continuation: continuation)
-        }
-
-        bonjourDiscoverySession = nil
-
-        if discovered.isEmpty {
-            appendDebugLog("mdns", "Bonjour discovery found no cane services")
-        } else {
-            let summary = discovered
-                .map { "\($0.deviceName ?? $0.endpoint.label)@\($0.endpoint.host):\($0.endpoint.port)" }
-                .joined(separator: ", ")
-            appendDebugLog("mdns", "Bonjour discovery found \(discovered.count) service(s): \(summary)")
-        }
-
-        return discovered
     }
 
     private func sendEffectiveNavigationCommand(_ command: NavigationCommand, instructionText: String) {
@@ -716,21 +607,6 @@ final class CaneConnectionManager: ObservableObject {
         return "Connected via \(endpoint.label). Cane traffic stays on Wi-Fi only. \(internetPath)."
     }
 
-    private func openWebSocket(to endpoint: EndpointProfile) {
-        guard let url = URL(string: "ws://\(endpoint.host):\(endpoint.port)/ws") else {
-            caneState.connectionStatus = .disconnected
-            caneState.statusMessage = "Invalid cane endpoint URL"
-            appendDebugLog("connection", "Invalid WebSocket URL for \(endpoint.host):\(endpoint.port)")
-            return
-        }
-
-        let session = URLSession(configuration: makeWiFiOnlyConfiguration())
-        let task = session.webSocketTask(with: url)
-        task.resume()
-        appendDebugLog("socket", "Opened WebSocket to \(url.absoluteString)")
-        adoptOpenWebSocket(session: session, task: task, endpoint: endpoint)
-    }
-
     private func adoptOpenWebSocket(
         session: URLSession,
         task: URLSessionWebSocketTask,
@@ -848,8 +724,9 @@ final class CaneConnectionManager: ObservableObject {
     private func makeWiFiOnlyConfiguration() -> URLSessionConfiguration {
         let config = URLSessionConfiguration.default
         config.allowsCellularAccess = false
-        config.allowsConstrainedNetworkAccess = false
-        config.allowsExpensiveNetworkAccess = false
+        config.allowsConstrainedNetworkAccess = true
+        config.allowsExpensiveNetworkAccess = true
+        config.waitsForConnectivity = true
         return config
     }
 
@@ -866,6 +743,42 @@ final class CaneConnectionManager: ObservableObject {
         }
 
         return try? JSONDecoder().decode(PairedCaneDevice.self, from: data)
+    }
+
+    private static func defaultAccessPointDevice(from existing: PairedCaneDevice?) -> PairedCaneDevice {
+        PairedCaneDevice(
+            deviceID: existing?.deviceID ?? "smartcane-direct-ap",
+            deviceName: existing?.deviceName ?? "SmartCane",
+            host: "192.168.4.1",
+            port: "8080",
+            wsPath: "/ws",
+            pairedAt: existing?.pairedAt ?? Date()
+        )
+    }
+
+    private func payloadTypeDescription(for data: Data) -> String {
+        guard let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = payload["type"] as? String else {
+            return "unknown"
+        }
+        return type
+    }
+
+    private func makeWebSocketURL(for endpoint: EndpointProfile) -> URL? {
+        var components = URLComponents()
+        components.scheme = "ws"
+        components.host = endpoint.host
+        components.port = Int(endpoint.port)
+        components.path = Self.normalizedPath(endpoint.path, fallback: "/ws")
+        return components.url
+    }
+
+    private nonisolated static func normalizedPath(_ path: String?, fallback: String) -> String {
+        let trimmed = path?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmed.isEmpty {
+            return fallback
+        }
+        return trimmed.hasPrefix("/") ? trimmed : "/\(trimmed)"
     }
 
     private func appendDebugLog(_ subsystem: String, _ message: String) {

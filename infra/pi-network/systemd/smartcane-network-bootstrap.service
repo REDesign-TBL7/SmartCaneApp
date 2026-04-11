@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=__SMARTCANE_REPO_ROOT__/infra/pi-network/bootstrap_network_mode.sh
+ExecStart=__SMARTCANE_REPO_ROOT__/infra/pi-network/smartcane_network.sh auto
 RemainAfterExit=true
 
 [Install]

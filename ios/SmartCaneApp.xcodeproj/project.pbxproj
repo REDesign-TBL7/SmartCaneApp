@@ -23,8 +23,6 @@
 		A1000000000000000000004D /* FastVLMAppleEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000004E /* FastVLMAppleEngine.swift */; };
 		A1000000000000000000004F /* VoiceCommandManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000050 /* VoiceCommandManager.swift */; };
 		A10000000000000000000051 /* VoiceCommandButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000052 /* VoiceCommandButton.swift */; };
-		A10000000000000000000054 /* CaneSetupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000055 /* CaneSetupManager.swift */; };
-		A10000000000000000000056 /* SetupCaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000057 /* SetupCaneView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,8 +44,6 @@
 		A10000000000000000000050 /* VoiceCommandManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandManager.swift; sourceTree = "<group>"; };
 		A10000000000000000000052 /* VoiceCommandButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandButton.swift; sourceTree = "<group>"; };
 		A10000000000000000000053 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A10000000000000000000055 /* CaneSetupManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaneSetupManager.swift; sourceTree = "<group>"; };
-		A10000000000000000000057 /* SetupCaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupCaneView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,7 +93,6 @@
 				A10000000000000000000015 /* CVModelView.swift */,
 				A10000000000000000000040 /* UserProfileView.swift */,
 				A10000000000000000000052 /* VoiceCommandButton.swift */,
-				A10000000000000000000057 /* SetupCaneView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -121,7 +116,6 @@
 				A1000000000000000000004C /* GuidanceFusionManager.swift */,
 				A1000000000000000000004E /* FastVLMAppleEngine.swift */,
 				A10000000000000000000050 /* VoiceCommandManager.swift */,
-				A10000000000000000000055 /* CaneSetupManager.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -220,8 +214,6 @@
 				A1000000000000000000004D /* FastVLMAppleEngine.swift in Sources */,
 				A1000000000000000000004F /* VoiceCommandManager.swift in Sources */,
 				A10000000000000000000051 /* VoiceCommandButton.swift in Sources */,
-				A10000000000000000000054 /* CaneSetupManager.swift in Sources */,
-				A10000000000000000000056 /* SetupCaneView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

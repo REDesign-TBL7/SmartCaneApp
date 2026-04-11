@@ -8,10 +8,8 @@ from camera_streamer import CameraStreamer
 from comm_server import CommServer
 from gps_manager import GPSManager
 from imu_manager import HandleIMUManager
-from mdns_advertiser import MDNSAdvertiser
 from motor_controller import MotorController
 from safety_manager import SafetyManager
-from setup_server import start_setup_server
 
 
 def configure_logging() -> None:
@@ -127,25 +125,8 @@ async def run_server() -> None:
     gps_manager = GPSManager()
     safety_manager = SafetyManager()
     camera_streamer = CameraStreamer()
-    setup_server, _ = start_setup_server()
-    runtime_mdns_advertiser = MDNSAdvertiser(
-        device_name=comm_server.device_name,
-        device_id=comm_server.device_id,
-        port=8080,
-        service_type="_smartcane._tcp.local.",
-        endpoint_path="/ws",
-    )
-    setup_mdns_advertiser = MDNSAdvertiser(
-        device_name=comm_server.device_name,
-        device_id=comm_server.device_id,
-        port=8081,
-        service_type="_smartcane-setup._tcp.local.",
-        endpoint_path="/setup/status",
-    )
 
     try:
-        runtime_mdns_advertiser.start()
-        setup_mdns_advertiser.start()
         async with websockets.serve(comm_server.handler, "0.0.0.0", 8080):
             logger.info("WebSocket server listening on 0.0.0.0:8080")
             await asyncio.gather(
@@ -160,10 +141,6 @@ async def run_server() -> None:
             )
     finally:
         logger.info("Shutting down SmartCane Pi runtime")
-        runtime_mdns_advertiser.stop()
-        setup_mdns_advertiser.stop()
-        setup_server.shutdown()
-        setup_server.server_close()
         motor_controller.close()
 
 

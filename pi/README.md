@@ -58,19 +58,17 @@ distance as `obstacleDistanceCm`. The Pi's own handle IMU remains available as a
 backup and is still forwarded separately as `handleImu...` fields for future
 camera deblur/stabilization.
 
-## Phone hotspot networking
+## Direct AP Networking
 
-The Pi runtime always serves on `0.0.0.0:8080`. The supported deployment flow is:
+The Pi runtime serves on `0.0.0.0:8080`. The supported deployment flow is:
 
-- If no hotspot config exists, bootstrap switches the Pi into setup AP mode:
-  - SSID `SmartCaneSetup`
-  - passphrase `SmartCaneSetup123`
-  - setup server advertised as `_smartcane-setup._tcp`
-- iPhone app joins the setup AP and discovers the setup server over Bonjour / mDNS
-- Pi switches into iPhone-hotspot client mode
-- Pi advertises itself over mDNS / Bonjour as `_smartcane._tcp`
-- iPhone app discovers the Pi by service name and device ID, then connects to the resolved WebSocket endpoint
-- app sends `PAIR_HELLO` and stores the returned cane name/ID locally
+- Pi boots into a fixed access point:
+  - SSID `SmartCane`
+  - passphrase `SmartCane123`
+  - gateway / app target `192.168.4.1`
+- iPhone joins the Pi Wi-Fi network directly
+- iPhone app connects directly to `ws://192.168.4.1:8080/ws`
+- no hotspot switching, Bonjour, or pairing discovery is required
 
 Optional device identity overrides:
 
@@ -80,14 +78,13 @@ export SMARTCANE_DEVICE_ID="smartcane-demo-01"
 python src/main.py
 ```
 
-Provisioning scripts are included in `infra/pi-network/`:
+Provisioning is handled by one script:
 
-- `setup_ap_mode.sh`
-- `bootstrap_network_mode.sh`
-- `setup_hotspot_client_mode.sh`
-- `check_network_mode.sh`
-- `use_mode.sh`
-- `install_runtime_service.sh`
+- `infra/pi-network/smartcane_network.sh`
+- `install`: install packages, systemd units, and sudoers
+- `auto`: boot-time AP mode
+- `ap`: force `SmartCane`
+- `status`: print current Wi-Fi/service status
 
 ## Hardware mapping
 
