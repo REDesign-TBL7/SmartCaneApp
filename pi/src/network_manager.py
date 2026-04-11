@@ -145,15 +145,28 @@ def write_mode_file() -> None:
 
 
 def start_ap_services() -> None:
+    logger.info("Starting AP services...")
+    run_cmd(["systemctl", "stop", "dnsmasq"], check=False)
+    run_cmd(["systemctl", "stop", "hostapd"], check=False)
     run_cmd(["systemctl", "unmask", "hostapd"], check=False)
     run_cmd(["systemctl", "enable", "dhcpcd"], check=False)
     run_cmd(["systemctl", "enable", "hostapd"], check=False)
     run_cmd(["systemctl", "enable", "dnsmasq"], check=False)
     
+    logger.info("Restarting dhcpcd...")
     run_cmd(["systemctl", "restart", "dhcpcd"], check=False)
     time.sleep(2)
-    run_cmd(["systemctl", "restart", "hostapd"])
-    run_cmd(["systemctl", "restart", "dnsmasq"])
+    
+    logger.info("Restarting hostapd...")
+    result = run_cmd(["systemctl", "restart", "hostapd"], check=False)
+    if result.returncode != 0:
+        logger.warning("hostapd restart failed: %s", result.stderr)
+    time.sleep(1)
+    
+    logger.info("Restarting dnsmasq...")
+    result = run_cmd(["systemctl", "restart", "dnsmasq"], check=False)
+    if result.returncode != 0:
+        logger.warning("dnsmasq restart failed: %s", result.stderr)
 
 
 def setup_ap(do_install: bool = False) -> bool:
