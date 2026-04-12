@@ -10,7 +10,7 @@ VERSION=""
 BUNDLE_URL=""
 PUBLISHED_AT=""
 WHEELHOUSE=""
-PI_PYTHON_VERSION="${SMARTCANE_PI_PYTHON_VERSION:-311}"
+PI_PYTHON_VERSION="${SMARTCANE_PI_PYTHON_VERSION:-313}"
 BUNDLE_NAME="smartcane-pi-bundle.tar.gz"
 MANIFEST_NAME="smartcane-pi-manifest.json"
 CHECKSUM_NAME="smartcane-pi-sha256.txt"
@@ -53,9 +53,11 @@ prepare_wheelhouse() {
   local generated_wheelhouse
   generated_wheelhouse=$(mktemp -d "${TMPDIR:-/tmp}/smartcane-bundle-wheelhouse.XXXXXX")
   # Redirect pip output to stderr so only the path is captured by the caller.
-  # Use --platform/--python-version to fetch ARM wheels that will run on the Pi.
+  # Use manylinux_2_17_aarch64 (glibc 2.17+, covers Pi OS Bullseye/Bookworm) so
+  # that packages like Pillow whose wheels are tagged manylinux rather than plain
+  # linux_aarch64 are matched correctly.
   python3 -m pip download --disable-pip-version-check --only-binary=:all: \
-    --platform linux_aarch64 \
+    --platform manylinux_2_17_aarch64 \
     --python-version "${PI_PYTHON_VERSION}" \
     --implementation cp \
     --abi "cp${PI_PYTHON_VERSION}" \
