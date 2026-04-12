@@ -28,6 +28,7 @@ TOOL_PACKAGES=(
   iproute2
   network-manager
   avahi-daemon
+  avahi-utils
   libnss-mdns
   bluez
   openssh-server
@@ -529,6 +530,7 @@ packages:
   - iproute2
   - network-manager
   - avahi-daemon
+  - avahi-utils
   - libnss-mdns
   - bluez
   - openssh-server

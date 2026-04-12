@@ -206,7 +206,7 @@ class BaseCharacteristic(ServiceInterface):
         self.flags = flags
         self.service = service
         self.path = f"{service.path}/char{index}"
-        self.value: list[int] = []
+        self.value = b""
 
     def properties(self) -> dict[str, Variant]:
         return {
@@ -252,7 +252,7 @@ class CredentialsCharacteristic(BaseCharacteristic):
 
     @method()
     def WriteValue(self, value: "ay", options: "a{sv}") -> None:
-        self.value = list(value)
+        self.value = bytes(value)
         self.application.schedule_credentials_write(bytes(value))
 
 
@@ -263,7 +263,7 @@ class StatusCharacteristic(BaseCharacteristic):
         self.refresh_value()
 
     def refresh_value(self) -> None:
-        self.value = list(self.application.current_status_bytes())
+        self.value = self.application.current_status_bytes()
 
 
 class ProvisioningAdvertisement(ServiceInterface):

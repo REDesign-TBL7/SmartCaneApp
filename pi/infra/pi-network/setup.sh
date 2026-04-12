@@ -27,7 +27,7 @@ install_packages() {
     log "Installing required packages (this may take a few minutes)..."
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
-    apt-get install -y -qq curl git iw rfkill iproute2 network-manager avahi-daemon libnss-mdns bluez openssh-server python3-venv i2c-tools python3-picamera2
+    apt-get install -y -qq curl git iw rfkill iproute2 network-manager avahi-daemon avahi-utils libnss-mdns bluez openssh-server python3-venv i2c-tools python3-picamera2
 }
 
 find_boot_config() {

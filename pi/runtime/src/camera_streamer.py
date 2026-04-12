@@ -1,5 +1,6 @@
 import base64
 import io
+import logging
 import time
 from typing import Any
 
@@ -9,6 +10,8 @@ except ImportError:  # pragma: no cover - for non-pi dev
     Picamera2 = None
 
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 
 class CameraStreamer:
@@ -22,18 +25,29 @@ class CameraStreamer:
         self.picam = None
 
         if self.available:
-            self.picam = Picamera2()
-            config = self.picam.create_preview_configuration(
-                main={"size": (width, height)}
-            )
-            self.picam.configure(config)
-            self.picam.start()
+            try:
+                self.picam = Picamera2()
+                config = self.picam.create_preview_configuration(
+                    main={"size": (width, height)}
+                )
+                self.picam.configure(config)
+                self.picam.start()
+            except Exception as exc:
+                logger.warning("Camera unavailable, continuing without video stream: %s", exc)
+                self.available = False
+                self.picam = None
 
     def next_frame_base64(self) -> str | None:
         if not self.available:
             return None
 
-        frame = self.picam.capture_array()
+        try:
+            frame = self.picam.capture_array()
+        except Exception as exc:
+            logger.warning("Camera frame capture failed, disabling video stream: %s", exc)
+            self.available = False
+            self.picam = None
+            return None
         image = Image.fromarray(frame)
         buffer = io.BytesIO()
         image.save(buffer, format="JPEG", quality=self.jpeg_quality, optimize=True)
