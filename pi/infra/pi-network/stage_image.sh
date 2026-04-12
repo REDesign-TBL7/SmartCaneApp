@@ -170,6 +170,11 @@ if [[ -n "${BOOT_MOUNT}" ]]; then
     else
       printf '\n%s\n' "dtparam=i2c_arm=on" >> "${boot_config_path}"
     fi
+    if grep -Eq '^\s*camera_auto_detect=' "${boot_config_path}"; then
+      sed -i.bak 's/^\s*camera_auto_detect=.*/camera_auto_detect=1/' "${boot_config_path}"
+    else
+      printf '%s\n' "camera_auto_detect=1" >> "${boot_config_path}"
+    fi
   fi
 fi
 

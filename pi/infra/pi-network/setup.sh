@@ -60,6 +60,11 @@ enable_i2c_support() {
         else
             printf '\n%s\n' "dtparam=i2c_arm=on" >> "${boot_config}"
         fi
+        if grep -Eq '^\s*camera_auto_detect=' "${boot_config}"; then
+            sed -i.bak 's/^\s*camera_auto_detect=.*/camera_auto_detect=1/' "${boot_config}"
+        else
+            printf '%s\n' "camera_auto_detect=1" >> "${boot_config}"
+        fi
     fi
 
     ensure_line_in_file /etc/modules "i2c-dev"
