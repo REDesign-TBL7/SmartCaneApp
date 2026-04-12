@@ -108,10 +108,10 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
 
         trackedDevices = [:]
         nearbyDevices = []
-        bluetoothStateSummary = "Scanning for SmartCane BLE diagnostics"
+        bluetoothStateSummary = "Scanning for SmartCane BLE service"
         isScanning = true
         centralManager.scanForPeripherals(
-            withServices: nil,
+            withServices: [provisioningServiceUUID],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
     }
@@ -143,10 +143,6 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
     }
 
     private func upsertDevice(name: String, peripheral: CBPeripheral, rssi: NSNumber) {
-        guard name.hasPrefix("SC0") || name.hasPrefix("SC1") || name.hasPrefix("SC-") || name.hasPrefix("SmartCane") else {
-            return
-        }
-
         var tracked = trackedDevices[peripheral.identifier] ?? TrackedDevice(
             id: peripheral.identifier,
             peripheral: peripheral,
@@ -167,7 +163,7 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
             tracked.historyPage = name
             tracked.name = "SmartCane BLE"
         } else {
-            tracked.name = name
+            tracked.name = name.isEmpty ? "SmartCane BLE" : name
         }
 
         trackedDevices[peripheral.identifier] = tracked
@@ -534,10 +530,7 @@ extension BLEDiagnosticsManager: CBCentralManagerDelegate {
         rssi RSSI: NSNumber
     ) {
         let localName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-        let resolvedName = localName ?? peripheral.name
-        guard let resolvedName else {
-            return
-        }
+        let resolvedName = localName ?? peripheral.name ?? "SmartCane BLE"
 
         Task { @MainActor in
             self.upsertDevice(name: resolvedName, peripheral: peripheral, rssi: RSSI)

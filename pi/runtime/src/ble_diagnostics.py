@@ -10,6 +10,19 @@ from network_manager import get_status
 logger = logging.getLogger(__name__)
 
 
+def _run_best_effort(cmd: list[str], *, input_text: str | None = None) -> subprocess.CompletedProcess | None:
+    try:
+        return subprocess.run(
+            cmd,
+            input=input_text,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return None
+
+
 class BluetoothDiagnosticsBeacon:
     def __init__(self) -> None:
         self.enabled = os.getenv("SMARTCANE_BLE_DIAGNOSTICS", "1") != "0"
@@ -54,13 +67,15 @@ class BluetoothDiagnosticsBeacon:
         ]
 
         try:
-            result = subprocess.run(
+            _run_best_effort(["rfkill", "unblock", "bluetooth"])
+            _run_best_effort(["systemctl", "start", "bluetooth"])
+            result = _run_best_effort(
                 ["bluetoothctl"],
-                input="\n".join(commands) + "\n",
-                check=False,
-                capture_output=True,
-                text=True,
+                input_text="\n".join(commands) + "\n",
             )
+            if result is None:
+                logger.warning("BLE diagnostics unavailable because bluetoothctl is not installed")
+                return
             if result.returncode == 0:
                 self._last_advertised_name = advertised_name
                 self._last_publish_at = now
@@ -79,12 +94,9 @@ class BluetoothDiagnosticsBeacon:
             return
 
         try:
-            subprocess.run(
+            _run_best_effort(
                 ["bluetoothctl"],
-                input="advertise off\nquit\n",
-                check=False,
-                capture_output=True,
-                text=True,
+                input_text="advertise off\nquit\n",
             )
         except Exception as exc:
             logger.warning("BLE diagnostics shutdown failed: %s", exc)

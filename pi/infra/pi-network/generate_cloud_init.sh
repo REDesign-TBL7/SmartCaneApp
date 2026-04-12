@@ -458,6 +458,7 @@ if command -v apt-get >/dev/null 2>&1; then
 fi
 
 systemctl enable bluetooth || true
+rfkill unblock bluetooth || true
 systemctl restart bluetooth || true
 systemctl enable NetworkManager || true
 systemctl start NetworkManager || true
@@ -558,6 +559,7 @@ $(printf '%s\n' "${ota_timer}" | sed 's/^/        /')
       SMARTCANE_OTA_MANIFEST_URL=${OTA_MANIFEST_URL}
 runcmd:
   - systemctl enable bluetooth
+  - rfkill unblock bluetooth || true
   - systemctl restart bluetooth || true
   - systemctl enable NetworkManager
   - systemctl start NetworkManager || true

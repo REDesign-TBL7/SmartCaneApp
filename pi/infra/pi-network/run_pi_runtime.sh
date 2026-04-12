@@ -23,4 +23,6 @@ else
 fi
 
 cd "${RUNTIME_DIR}"
+rfkill unblock bluetooth >/dev/null 2>&1 || true
+systemctl start bluetooth >/dev/null 2>&1 || true
 exec "${PYTHON_BIN}" "${MAIN_FILE}" "$@"

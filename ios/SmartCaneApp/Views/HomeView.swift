@@ -60,6 +60,14 @@ struct HomeView: View {
                 if newStatus == .connected {
                     showsConnectionAssistant = false
                     bleDiagnosticsManager.endConnectionAssist()
+                } else if newStatus == .disconnected,
+                          connectionManager.hasKnownRuntimeEndpoint,
+                          !showsConnectionAssistant {
+                    let status = connectionManager.caneState.statusMessage.lowercased()
+                    if status.contains("failed") {
+                        bleDiagnosticsManager.beginConnectionAssist(autoConnect: true)
+                        showsConnectionAssistant = true
+                    }
                 }
             }
             .sheet(isPresented: $showsConnectionAssistant, onDismiss: {
@@ -226,9 +234,10 @@ struct HomeView: View {
         if connectionManager.caneState.connectionStatus == .connected {
             connectionManager.disconnectFromCane()
         } else {
-            bleDiagnosticsManager.beginConnectionAssist(autoConnect: true)
-            showsConnectionAssistant = true
-            _ = connectionManager.connectToCane()
+            if !connectionManager.connectToCane() {
+                bleDiagnosticsManager.beginConnectionAssist(autoConnect: true)
+                showsConnectionAssistant = true
+            }
         }
     }
 

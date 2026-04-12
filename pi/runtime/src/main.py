@@ -218,14 +218,16 @@ async def run_server() -> None:
         apply_credentials=apply_ble_hotspot_credentials,
         status_provider=provisioning_status_snapshot,
     )
-    diagnostics_task = asyncio.create_task(
-        bluetooth_diagnostics_loop(
-            ble_beacon,
-            connected_clients_provider=lambda: 0,
-            fault_code_provider=lambda: "NONE",
+    diagnostics_task: asyncio.Task[None] | None = None
+    provisioning_started = await provisioning_service.start()
+    if not provisioning_started:
+        diagnostics_task = asyncio.create_task(
+            bluetooth_diagnostics_loop(
+                ble_beacon,
+                connected_clients_provider=lambda: 0,
+                fault_code_provider=lambda: "NONE",
+            )
         )
-    )
-    await provisioning_service.start()
 
     try:
         if not network_ready():
@@ -247,21 +249,22 @@ async def run_server() -> None:
         gps_manager = GPSManager()
         safety_manager = SafetyManager()
         camera_streamer = CameraStreamer()
-        diagnostics_task.cancel()
-        await asyncio.gather(diagnostics_task, return_exceptions=True)
-        diagnostics_task = asyncio.create_task(
-            bluetooth_diagnostics_loop(
-                ble_beacon,
-                connected_clients_provider=lambda: len(comm_server.clients),
-                fault_code_provider=lambda: safety_manager.fault_code,
+        if diagnostics_task is not None:
+            diagnostics_task.cancel()
+            await asyncio.gather(diagnostics_task, return_exceptions=True)
+            diagnostics_task = asyncio.create_task(
+                bluetooth_diagnostics_loop(
+                    ble_beacon,
+                    connected_clients_provider=lambda: len(comm_server.clients),
+                    fault_code_provider=lambda: safety_manager.fault_code,
+                )
             )
-        )
 
         async with websockets.serve(comm_server.handler, "0.0.0.0", 8080):
             logger.info("WebSocket server listening on 0.0.0.0:8080")
             diagnostics_state.set_stage("WL")
             diagnostics_state.add_message("WebSocket server listening on port 8080")
-            await asyncio.gather(
+            tasks = [
                 telemetry_and_control_loop(
                     comm_server,
                     motor_controller,
@@ -270,21 +273,25 @@ async def run_server() -> None:
                     safety_manager,
                 ),
                 camera_stream_loop(comm_server, camera_streamer, handle_imu_manager),
-                diagnostics_task,
-            )
+            ]
+            if diagnostics_task is not None:
+                tasks.append(diagnostics_task)
+            await asyncio.gather(*tasks)
     finally:
         logger.info("Shutting down SmartCane Pi runtime")
         diagnostics_state.set_runtime_active(False)
         diagnostics_state.set_stage("SD")
         diagnostics_state.add_message("Runtime shutting down")
-        diagnostics_task.cancel()
-        await asyncio.gather(diagnostics_task, return_exceptions=True)
+        if diagnostics_task is not None:
+            diagnostics_task.cancel()
+            await asyncio.gather(diagnostics_task, return_exceptions=True)
         await provisioning_service.stop()
-        ble_beacon.update_runtime_state(fault_code="NONE", connected_clients=0, runtime_active=False)
-        try:
-            await asyncio.to_thread(ble_beacon.stop)
-        except Exception:
-            logger.debug("BLE diagnostics beacon stop failed", exc_info=True)
+        if diagnostics_task is not None:
+            ble_beacon.update_runtime_state(fault_code="NONE", connected_clients=0, runtime_active=False)
+            try:
+                await asyncio.to_thread(ble_beacon.stop)
+            except Exception:
+                logger.debug("BLE diagnostics beacon stop failed", exc_info=True)
         remove_pid()
         if "motor_controller" in locals():
             motor_controller.close()

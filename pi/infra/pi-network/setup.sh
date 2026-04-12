@@ -119,6 +119,7 @@ EOF
 
 start_service() {
     log "Starting SmartCane service..."
+    rfkill unblock bluetooth || true
     systemctl enable bluetooth
     systemctl restart bluetooth || true
     systemctl enable NetworkManager

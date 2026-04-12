@@ -136,13 +136,24 @@ check_python_runtime() {
 }
 
 check_rfkill() {
-    local state
+    local state bt_state
     state=$(rfkill list wifi 2>/dev/null \
         | grep -o "Soft blocked: \(yes\|no\)" | head -1 | cut -d: -f2 | tr -d ' ')
     if [[ "$state" == "no" ]]; then
         pass "WiFi not soft-blocked"
     else
         fail "WiFi soft-blocked — run: rfkill unblock wifi"
+        return 1
+    fi
+
+    bt_state=$(rfkill list bluetooth 2>/dev/null \
+        | grep -o "Soft blocked: \(yes\|no\)" | head -1 | cut -d: -f2 | tr -d ' ')
+    if [[ -z "$bt_state" ]]; then
+        warn "Bluetooth rfkill state unavailable"
+    elif [[ "$bt_state" == "no" ]]; then
+        pass "Bluetooth not soft-blocked"
+    else
+        fail "Bluetooth soft-blocked — run: rfkill unblock bluetooth"
         return 1
     fi
 }
@@ -170,10 +181,16 @@ quick_fix() {
     info "Attempting quick fixes..."
 
     rfkill unblock wifi 2>/dev/null || true
+    rfkill unblock bluetooth 2>/dev/null || true
 
     if ! systemctl is-active --quiet NetworkManager; then
         warn "NetworkManager not running, starting..."
         systemctl start NetworkManager || true
+    fi
+
+    if ! systemctl is-active --quiet bluetooth; then
+        warn "bluetooth not running, starting..."
+        systemctl start bluetooth || true
     fi
 
     if ! systemctl is-active --quiet avahi-daemon; then

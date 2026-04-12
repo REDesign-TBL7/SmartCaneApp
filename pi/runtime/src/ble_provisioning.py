@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import subprocess
+import time
 from typing import Awaitable, Callable
 
 from diagnostics_state import diagnostics_state
@@ -40,10 +41,31 @@ CREDENTIALS_UUID = "7d0d1001-6a6e-4b2d-9b5f-8f5f7f51a001"
 STATUS_UUID = "7d0d1002-6a6e-4b2d-9b5f-8f5f7f51a001"
 APP_PATH = "/org/smartcane/provision"
 ADAPTER_PATH = "/org/bluez/hci0"
+ADVERTISEMENT_PATH = "/org/smartcane/provision/advertisement0"
 
 
 def is_available() -> bool:
     return MessageBus is not None
+
+
+def _run_best_effort(cmd: list[str], *, input_text: str | None = None) -> subprocess.CompletedProcess | None:
+    try:
+        return subprocess.run(
+            cmd,
+            input=input_text,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return None
+
+
+def _is_bluetooth_soft_blocked() -> bool:
+    result = _run_best_effort(["rfkill", "list", "bluetooth"])
+    if result is None or result.returncode != 0:
+        return False
+    return "Soft blocked: yes" in result.stdout
 
 
 class ProvisioningApplication(ServiceInterface):
@@ -244,6 +266,41 @@ class StatusCharacteristic(BaseCharacteristic):
         self.value = list(self.application.current_status_bytes())
 
 
+class ProvisioningAdvertisement(ServiceInterface):
+    def __init__(self, local_name: str = "SmartCane BLE") -> None:
+        super().__init__("org.bluez.LEAdvertisement1")
+        self.path = ADVERTISEMENT_PATH
+        self.local_name = local_name
+
+    def properties(self) -> dict[str, Variant]:
+        return {
+            "Type": Variant("s", "peripheral"),
+            "ServiceUUIDs": Variant("as", [SERVICE_UUID]),
+            "LocalName": Variant("s", self.local_name),
+            "Discoverable": Variant("b", True),
+        }
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Type(self) -> "s":
+        return "peripheral"
+
+    @dbus_property(access=PropertyAccess.READ)
+    def ServiceUUIDs(self) -> "as":
+        return [SERVICE_UUID]
+
+    @dbus_property(access=PropertyAccess.READ)
+    def LocalName(self) -> "s":
+        return self.local_name
+
+    @dbus_property(access=PropertyAccess.READ)
+    def Discoverable(self) -> "b":
+        return True
+
+    @method()
+    def Release(self) -> None:
+        return None
+
+
 class BluetoothProvisioningService:
     def __init__(
         self,
@@ -254,6 +311,7 @@ class BluetoothProvisioningService:
         self.status_provider = status_provider
         self.bus: MessageBus | None = None
         self.application: ProvisioningApplication | None = None
+        self.advertisement: ProvisioningAdvertisement | None = None
         self.started = False
 
     async def start(self) -> bool:
@@ -271,11 +329,15 @@ class BluetoothProvisioningService:
             self.bus.export(self.application.service.path, self.application.service)
             self.bus.export(self.application.credentials_characteristic.path, self.application.credentials_characteristic)
             self.bus.export(self.application.status_characteristic.path, self.application.status_characteristic)
+            self.advertisement = ProvisioningAdvertisement()
+            self.bus.export(self.advertisement.path, self.advertisement)
 
             bluez_object = await self.bus.introspect("org.bluez", ADAPTER_PATH)
             adapter = self.bus.get_proxy_object("org.bluez", ADAPTER_PATH, bluez_object)
             manager = adapter.get_interface("org.bluez.GattManager1")
+            advertising_manager = adapter.get_interface("org.bluez.LEAdvertisingManager1")
             await manager.call_register_application(self.application.path, {})
+            await advertising_manager.call_register_advertisement(self.advertisement.path, {})
             self.application.update_status("BLE_READY", "Waiting for hotspot credentials")
             diagnostics_state.set_stage("PV")
             self.started = True
@@ -294,6 +356,9 @@ class BluetoothProvisioningService:
             bluez_object = await self.bus.introspect("org.bluez", ADAPTER_PATH)
             adapter = self.bus.get_proxy_object("org.bluez", ADAPTER_PATH, bluez_object)
             manager = adapter.get_interface("org.bluez.GattManager1")
+            advertising_manager = adapter.get_interface("org.bluez.LEAdvertisingManager1")
+            if self.advertisement is not None:
+                await advertising_manager.call_unregister_advertisement(self.advertisement.path)
             await manager.call_unregister_application(self.application.path)
         except Exception:
             logger.debug("BLE provisioning unregister failed", exc_info=True)
@@ -301,10 +366,20 @@ class BluetoothProvisioningService:
 
     @staticmethod
     def _prepare_adapter() -> None:
-        subprocess.run(
-            ["bluetoothctl"],
-            input="power on\npairable on\ndiscoverable on\nquit\n",
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        diagnostics_state.add_message("Preparing Bluetooth adapter")
+        _run_best_effort(["rfkill", "unblock", "bluetooth"])
+        _run_best_effort(["systemctl", "start", "bluetooth"])
+
+        for _ in range(4):
+            _run_best_effort(
+                ["bluetoothctl"],
+                input_text="power on\npairable on\ndiscoverable on\nquit\n",
+            )
+            if not _is_bluetooth_soft_blocked():
+                diagnostics_state.add_message("Bluetooth adapter ready")
+                return
+            time.sleep(1)
+
+        diagnostics_state.set_error("RB")
+        diagnostics_state.add_message("Bluetooth is still soft-blocked after rfkill unblock")
+        logger.warning("Bluetooth adapter is still soft-blocked after preparation")
