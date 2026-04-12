@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import socket
+import subprocess
 import time
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from websockets.server import WebSocketServerProtocol
 
 logger = logging.getLogger(__name__)
 DEVICE_NAME_PATH = Path("/etc/smartcane/device_name")
+NETWORK_SCRIPT = Path(__file__).resolve().parents[2] / "infra" / "pi-network" / "smartcane_network.sh"
 
 
 class CommServer:
@@ -87,6 +89,8 @@ class CommServer:
                         self.device_id,
                     )
                     await websocket.send(json.dumps(response))
+                elif payload_type == "AP_TEST_CONFIRM":
+                    self._confirm_ap_test(payload.get("clientName"))
         finally:
             self.clients.discard(websocket)
             logger.info("App client disconnected: %s", websocket.remote_address)
@@ -152,3 +156,31 @@ class CommServer:
         if DEVICE_NAME_PATH.exists():
             return DEVICE_NAME_PATH.read_text().strip() or default_name
         return os.getenv("SMARTCANE_DEVICE_NAME", default_name)
+
+    @staticmethod
+    def _confirm_ap_test(client_name: Any) -> None:
+        if not NETWORK_SCRIPT.exists():
+            logger.warning("Cannot confirm AP test because %s is missing", NETWORK_SCRIPT)
+            return
+
+        try:
+            result = subprocess.run(
+                ["sudo", str(NETWORK_SCRIPT), "confirm-test"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                logger.info(
+                    "Confirmed AP test from app client %s: %s",
+                    client_name,
+                    (result.stdout or "").strip() or "ok",
+                )
+            else:
+                logger.warning(
+                    "AP test confirm failed for app client %s: %s",
+                    client_name,
+                    (result.stderr or result.stdout or "").strip(),
+                )
+        except Exception as exc:
+            logger.warning("AP test confirm raised %s", exc)

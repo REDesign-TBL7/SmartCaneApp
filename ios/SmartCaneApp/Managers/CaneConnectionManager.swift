@@ -619,6 +619,8 @@ final class CaneConnectionManager: ObservableObject {
         caneState.connectionStatus = .connected
         caneState.statusMessage = connectionStatusSummary(connectedTo: endpoint)
 
+        appendDebugLog("connection", "Sending AP test confirmation if the Pi armed a rollback window")
+        send(.confirmAPTest(clientName: "SmartCane iPhone"))
         startReceiveLoop()
         startHeartbeatLoop()
     }

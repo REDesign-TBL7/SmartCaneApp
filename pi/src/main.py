@@ -2,7 +2,9 @@ import asyncio
 import logging
 import os
 import signal
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 import websockets
@@ -16,6 +18,10 @@ from network_manager import ensure_network, get_status, setup_ap
 from safety_manager import SafetyManager
 
 PID_FILE = Path("/run/smartcane-runtime.pid")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+NETWORK_SCRIPT = REPO_ROOT / "infra" / "pi-network" / "smartcane_network.sh"
+PI_DIR = Path(__file__).resolve().parents[1]
+AP_TEST_RUNTIME_UNIT = "smartcane-ap-test-runtime"
 
 def write_pid() -> None:
     PID_FILE.write_text(str(os.getpid()))
@@ -186,6 +192,76 @@ def print_status() -> None:
     sys.exit(0 if ready else 1)
 
 
+def network_ready() -> bool:
+    status = get_status()
+    return all(
+        [
+            status["packages_installed"],
+            status["hostapd_active"],
+            status["dnsmasq_active"],
+            status["ip_configured"],
+        ]
+    )
+
+
+def wait_for_network(timeout_seconds: int) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if network_ready():
+            return True
+        time.sleep(2)
+    return network_ready()
+
+
+def run_network_script(*args: str) -> int:
+    command = [str(NETWORK_SCRIPT), *args]
+    result = subprocess.run(command, check=False)
+    return result.returncode
+
+
+def runtime_service_installed() -> bool:
+    result = subprocess.run(
+        ["systemctl", "cat", "smartcane-runtime.service"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
+def arm_ap_test_runtime(wait_seconds: int) -> None:
+    subprocess.run(
+        ["systemctl", "stop", f"{AP_TEST_RUNTIME_UNIT}.service"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["systemctl", "reset-failed", f"{AP_TEST_RUNTIME_UNIT}.service"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        [
+            "systemd-run",
+            "--unit",
+            AP_TEST_RUNTIME_UNIT,
+            "--description",
+            "SmartCane AP test runtime",
+            "--property",
+            f"WorkingDirectory={PI_DIR}",
+            "--setenv",
+            "PYTHONUNBUFFERED=1",
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "--wait-for-network",
+            str(wait_seconds),
+        ],
+        check=True,
+    )
+
+
 def main() -> None:
     if len(sys.argv) > 1:
         arg = sys.argv[1]
@@ -197,12 +273,40 @@ def main() -> None:
             logger.info("Running AP setup...")
             success = setup_ap(do_install=True)
             sys.exit(0 if success else 1)
+        elif arg == "--ap-test":
+            if os.geteuid() != 0:
+                print("ERROR: --ap-test requires root. Run: sudo python src/main.py --ap-test [seconds]")
+                sys.exit(1)
+
+            rollback_seconds = sys.argv[2] if len(sys.argv) > 2 else "300"
+            if not runtime_service_installed():
+                arm_ap_test_runtime(wait_seconds=90)
+            sys.exit(run_network_script("ap-test", "--rollback", rollback_seconds))
+        elif arg == "--confirm-ap-test":
+            if os.geteuid() != 0:
+                print("ERROR: --confirm-ap-test requires root. Run: sudo python src/main.py --confirm-ap-test")
+                sys.exit(1)
+            sys.exit(run_network_script("confirm-test"))
+        elif arg == "--rollback-ap-test":
+            if os.geteuid() != 0:
+                print("ERROR: --rollback-ap-test requires root. Run: sudo python src/main.py --rollback-ap-test")
+                sys.exit(1)
+            sys.exit(run_network_script("rollback-now"))
+        elif arg == "--wait-for-network":
+            timeout_seconds = int(sys.argv[2]) if len(sys.argv) > 2 else 60
+            if not wait_for_network(timeout_seconds):
+                print(f"ERROR: network not ready after waiting {timeout_seconds} seconds")
+                sys.exit(1)
         elif arg == "--status":
             print_status()
         elif arg == "--help":
-            print("Usage: python src/main.py [--setup|--status|--help]")
+            print("Usage: python src/main.py [--setup|--ap-test [seconds]|--confirm-ap-test|--rollback-ap-test|--status|--help]")
             print("  No args: Start runtime (assumes network already configured)")
             print("  --setup: Configure AP mode (includes package install)")
+            print("  --ap-test [seconds]: Switch to AP mode with timed rollback for headless testing")
+            print("  --confirm-ap-test: Cancel the pending AP rollback and keep AP mode")
+            print("  --rollback-ap-test: Restore the previous client Wi-Fi immediately")
+            print("  --wait-for-network [seconds]: Wait for AP readiness, then start runtime")
             print("  --status: Print network status")
             sys.exit(0)
         else:

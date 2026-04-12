@@ -200,6 +200,22 @@ struct OutboundCaneMessage: Codable {
         )
     }
 
+    static func confirmAPTest(clientName: String) -> OutboundCaneMessage {
+        OutboundCaneMessage(
+            type: "AP_TEST_CONFIRM",
+            protocolVersion: 1,
+            timestampMs: Self.nowMs,
+            command: nil,
+            instructionText: nil,
+            heartbeat: nil,
+            vlmSummary: nil,
+            latitude: nil,
+            longitude: nil,
+            debugLabel: nil,
+            clientName: clientName
+        )
+    }
+
     private static var nowMs: Int64 {
         Int64(Date().timeIntervalSince1970 * 1000)
     }

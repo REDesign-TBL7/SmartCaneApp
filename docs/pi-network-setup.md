@@ -27,8 +27,17 @@ sudo python src/main.py
 # Setup network only, don't start runtime
 sudo python src/main.py --setup
 
+# Enter temporary AP test mode safely from an SSH session on client Wi-Fi
+sudo python src/main.py --ap-test 300
+
 # Check network status
 python src/main.py --status
+
+# Enter temporary AP test mode and auto-rollback after 5 minutes unless the app confirms success
+sudo infra/pi-network/smartcane_network.sh ap-test --rollback 300
+
+# Inspect current AP / rollback state
+infra/pi-network/smartcane_network.sh status
 
 # Help
 python src/main.py --help
@@ -82,6 +91,25 @@ The network setup:
 - Configures dnsmasq for DHCP
 - Configures dhcpcd for static IP
 - Starts all services
+
+## Headless AP Testing
+
+Use this when you are SSHed into the Pi over an existing client Wi-Fi network and
+need to test the phone app against the Pi AP without permanently stranding the Pi.
+
+1. SSH into the Pi on the existing client network.
+2. Run:
+
+```bash
+sudo python src/main.py --ap-test 300
+```
+
+3. The Pi switches to the `SmartCane` AP and arms a 5-minute rollback timer.
+4. Your SSH session drops. This is expected.
+5. Join `SmartCane` on the iPhone and test the app connection.
+6. If the app connects successfully, it sends `AP_TEST_CONFIRM` and the Pi keeps AP mode.
+7. If the app never confirms success, the Pi automatically restores the previous
+   client Wi-Fi config and SSH becomes reachable again after the rollback fires.
 
 ## Troubleshooting
 
