@@ -478,7 +478,7 @@ EOF
 #cloud-config
 hostname: ${HOSTNAME}
 manage_etc_hosts: true
-ssh: true
+enable_ssh: true
 ${ssh_password_block}
 users:
   - name: ${PI_USERNAME}
