@@ -30,6 +30,7 @@ TOOL_PACKAGES=(
   avahi-daemon
   libnss-mdns
   bluez
+  openssh-server
   python3-picamera2
   python3-venv
 )
@@ -328,6 +329,8 @@ instance-id: ${HOSTNAME}
 local-hostname: ${HOSTNAME}
 EOF
 
+touch "${BOOT_DIR}/ssh"
+
 if [[ -n "${HOTSPOT_SSID}" ]]; then
   # Embed credentials directly in network-config so NM connects on first boot
   # before the Python runtime even starts — no chicken-and-egg problem.
@@ -460,6 +463,8 @@ systemctl enable NetworkManager || true
 systemctl start NetworkManager || true
 systemctl enable avahi-daemon || true
 systemctl start avahi-daemon || true
+systemctl enable ssh || true
+systemctl restart ssh || true
 systemctl daemon-reload
 systemctl enable smartcane-runtime.service
 systemctl enable smartcane-ota.timer || true
@@ -473,6 +478,7 @@ EOF
 #cloud-config
 hostname: ${HOSTNAME}
 manage_etc_hosts: true
+ssh: true
 ${ssh_password_block}
 users:
   - name: ${PI_USERNAME}
@@ -512,6 +518,7 @@ else
 #cloud-config
 hostname: ${HOSTNAME}
 manage_etc_hosts: true
+ssh: true
 package_update: true
 packages:
   - curl
@@ -523,6 +530,7 @@ packages:
   - avahi-daemon
   - libnss-mdns
   - bluez
+  - openssh-server
   - python3-venv
 users:
   - name: ${PI_USERNAME}
@@ -555,6 +563,8 @@ runcmd:
   - systemctl start NetworkManager || true
   - systemctl enable avahi-daemon
   - systemctl start avahi-daemon || true
+  - systemctl enable ssh || true
+  - systemctl restart ssh || true
   - test -d ${REPO_ON_PI}/.git || git clone --branch ${REPO_BRANCH} ${REPO_URL} ${REPO_ON_PI}
   - python3 -m venv ${REPO_ON_PI}/runtime/.venv
   - ${REPO_ON_PI}/runtime/.venv/bin/pip install --upgrade pip

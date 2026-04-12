@@ -162,6 +162,7 @@ EOF
 fi
 
 if [[ -n "${BOOT_MOUNT}" ]]; then
+  touch "${BOOT_MOUNT}/ssh"
   boot_config_path=$(find_boot_config_in_mount "${BOOT_MOUNT}" || true)
   if [[ -n "${boot_config_path}" ]]; then
     if grep -Eq '^\s*dtparam=i2c_arm=' "${boot_config_path}"; then
