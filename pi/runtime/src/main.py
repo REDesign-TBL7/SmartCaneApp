@@ -15,6 +15,7 @@ from comm_server import CommServer
 from diagnostics_state import diagnostics_state
 from gps_manager import GPSManager
 from imu_manager import HandleIMUManager
+from mdns_advertiser import RuntimeAdvertisement, RuntimeServiceAdvertiser
 from motor_controller import MotorController
 from network_manager import ensure_network, get_status, setup_hotspot_client, store_hotspot_credentials
 from safety_manager import SafetyManager
@@ -214,6 +215,7 @@ async def run_server() -> None:
     diagnostics_state.add_message("Runtime booting")
     write_pid()
     ble_beacon = BluetoothDiagnosticsBeacon()
+    mdns_advertiser = RuntimeServiceAdvertiser()
     provisioning_service = BluetoothProvisioningService(
         apply_credentials=apply_ble_hotspot_credentials,
         status_provider=provisioning_status_snapshot,
@@ -261,6 +263,24 @@ async def run_server() -> None:
             )
 
         async with websockets.serve(comm_server.handler, "0.0.0.0", 8080):
+            status = get_status()
+            runtime_ip = str(status.get("runtime_ip") or "").strip()
+            device_name, device_id = comm_server.current_identity()
+            if runtime_ip:
+                try:
+                    if mdns_advertiser.start(
+                        RuntimeAdvertisement(
+                            host=runtime_ip,
+                            port=8080,
+                            path="/ws",
+                            device_name=device_name,
+                            device_id=device_id,
+                        )
+                    ):
+                        diagnostics_state.add_message(f"mDNS service advertised at {runtime_ip}:8080")
+                except Exception as exc:
+                    logger.warning("Failed to advertise mDNS runtime service: %s", exc)
+                    diagnostics_state.add_message("mDNS runtime advertisement failed")
             logger.info("WebSocket server listening on 0.0.0.0:8080")
             diagnostics_state.set_stage("WL")
             diagnostics_state.add_message("WebSocket server listening on port 8080")
@@ -286,6 +306,7 @@ async def run_server() -> None:
             diagnostics_task.cancel()
             await asyncio.gather(diagnostics_task, return_exceptions=True)
         await provisioning_service.stop()
+        mdns_advertiser.stop()
         if diagnostics_task is not None:
             ble_beacon.update_runtime_state(fault_code="NONE", connected_clients=0, runtime_active=False)
             try:

@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import Darwin
 
 @MainActor
 final class CaneConnectionManager: ObservableObject {
@@ -74,6 +75,8 @@ final class CaneConnectionManager: ObservableObject {
     private let pairingStorageKey = "smart_cane_paired_device"
     private let runtimePort = "8080"
     private let runtimePath = "/ws"
+    private let mdnsRuntimeHost = "smartcane-pi.local"
+    private let bonjourServiceType = "_smartcane._tcp."
 
     private var currentEndpoint: EndpointProfile?
     private var webSocketTask: URLSessionWebSocketTask?
@@ -93,6 +96,7 @@ final class CaneConnectionManager: ObservableObject {
     private let pathQueue = DispatchQueue(label: "smartcane.path.monitor")
     private var isWiFiActive = false
     private var isCellularActive = false
+    private var activeBonjourLookup: BonjourLookup?
 
     init() {
         pairedDevice = Self.loadPairedDevice(storageKey: pairingStorageKey)
@@ -141,7 +145,7 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     var hasKnownRuntimeEndpoint: Bool {
-        preferredEndpoint() != nil
+        !connectionCandidates().isEmpty
     }
 
     func registerFrameHandler(_ handler: @escaping (FrameSample) -> Void) {
@@ -155,10 +159,11 @@ final class CaneConnectionManager: ObservableObject {
             return false
         }
 
-        guard let endpoint = preferredEndpoint() else {
+        let candidates = connectionCandidates()
+        guard !candidates.isEmpty else {
             caneState.connectionStatus = .disconnected
-            caneState.statusMessage = "No Pi hotspot address discovered yet. The app is waiting for BLE discovery or hotspot provisioning."
-            appendDebugLog("connection", "Connect blocked because no BLE-discovered hotspot endpoint is available yet")
+            caneState.statusMessage = "No Pi runtime address is known yet. The app is waiting for mDNS or BLE discovery."
+            appendDebugLog("connection", "Connect blocked because no runtime endpoint candidates are available yet")
             return false
         }
 
@@ -173,7 +178,7 @@ final class CaneConnectionManager: ObservableObject {
             guard let self else {
                 return
             }
-            await self.connectToRuntime(endpoint)
+            await self.connectToRuntime(candidates)
         }
         return true
     }
@@ -354,29 +359,66 @@ final class CaneConnectionManager: ObservableObject {
         return obstacle >= 0 && obstacle < 45
     }
 
-    private func connectToRuntime(_ endpoint: EndpointProfile) async {
+    private func connectToRuntime(_ candidates: [EndpointProfile]) async {
         let pairedAt = pairedDevice?.pairedAt ?? Date()
         let expectedDeviceID = pairedDevice?.deviceID
-        appendDebugLog("connection", "Connecting to hotspot runtime at \(endpoint.host):\(endpoint.port)\(endpoint.path)")
+        appendDebugLog(
+            "connection",
+            "Trying runtime endpoints: \(candidates.map { "\($0.host):\($0.port)" }.joined(separator: ", "))"
+        )
 
-        do {
-            let established = try await establishRuntimeSession(
-                to: endpoint,
-                expectedDeviceID: expectedDeviceID,
-                pairedAt: pairedAt
-            )
-            savePairedDevice(established.pairedDevice)
-            adoptOpenWebSocket(
-                session: established.session,
-                task: established.task,
-                endpoint: established.endpoint
-            )
-        } catch {
-            caneState.connectionStatus = .disconnected
-            caneState.statusMessage = "Hotspot connection failed. Keep Personal Hotspot on and use BLE diagnostics to confirm the Pi IP."
-            appendDebugLog("connection", "Hotspot runtime connection failed: \(error.localizedDescription)")
+        var lastError: Error?
+        for endpoint in candidates {
+            appendDebugLog("connection", "Connecting to runtime at \(endpoint.host):\(endpoint.port)\(endpoint.path)")
+            do {
+                let established = try await establishRuntimeSession(
+                    to: endpoint,
+                    expectedDeviceID: expectedDeviceID,
+                    pairedAt: pairedAt
+                )
+                savePairedDevice(established.pairedDevice)
+                adoptOpenWebSocket(
+                    session: established.session,
+                    task: established.task,
+                    endpoint: established.endpoint
+                )
+                connectTask = nil
+                return
+            } catch {
+                lastError = error
+                appendDebugLog("connection", "Runtime connection failed at \(endpoint.host): \(error.localizedDescription)")
+            }
         }
 
+        if let bonjourEndpoint = await discoverBonjourEndpoint(excluding: candidates.map(\.host)) {
+            appendDebugLog("bonjour", "Resolved Bonjour runtime at \(bonjourEndpoint.host):\(bonjourEndpoint.port)\(bonjourEndpoint.path)")
+            do {
+                let established = try await establishRuntimeSession(
+                    to: bonjourEndpoint,
+                    expectedDeviceID: expectedDeviceID,
+                    pairedAt: pairedAt
+                )
+                savePairedDevice(established.pairedDevice)
+                adoptOpenWebSocket(
+                    session: established.session,
+                    task: established.task,
+                    endpoint: established.endpoint
+                )
+                connectTask = nil
+                return
+            } catch {
+                lastError = error
+                appendDebugLog("bonjour", "Bonjour runtime connection failed: \(error.localizedDescription)")
+            }
+        } else {
+            appendDebugLog("bonjour", "No Bonjour runtime service resolved")
+        }
+
+        caneState.connectionStatus = .disconnected
+        caneState.statusMessage = "Connection failed. The app tried the saved endpoint, smartcane-pi.local, and Bonjour service discovery. Use BLE diagnostics to refresh the Pi address."
+        if let lastError {
+            appendDebugLog("connection", "All runtime connection attempts failed: \(lastError.localizedDescription)")
+        }
         connectTask = nil
     }
 
@@ -815,17 +857,77 @@ final class CaneConnectionManager: ObservableObject {
         return try? JSONDecoder().decode(PairedCaneDevice.self, from: data)
     }
 
-    private func preferredEndpoint() -> EndpointProfile? {
-        guard let pairedDevice else {
-            return nil
+    private func connectionCandidates() -> [EndpointProfile] {
+        var candidates: [EndpointProfile] = []
+        var seenHosts = Set<String>()
+
+        func appendCandidate(_ endpoint: EndpointProfile) {
+            let normalizedHost = endpoint.host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard !normalizedHost.isEmpty, !seenHosts.contains(normalizedHost) else {
+                return
+            }
+            seenHosts.insert(normalizedHost)
+            candidates.append(endpoint)
         }
 
-        return EndpointProfile(
-            host: pairedDevice.host,
-            port: pairedDevice.port,
-            path: pairedDevice.wsPath ?? runtimePath,
-            label: pairedDevice.deviceName
+        if let pairedDevice {
+            appendCandidate(
+                EndpointProfile(
+                    host: pairedDevice.host,
+                    port: pairedDevice.port,
+                    path: pairedDevice.wsPath ?? runtimePath,
+                    label: pairedDevice.deviceName
+                )
+            )
+        }
+
+        appendCandidate(
+            EndpointProfile(
+                host: mdnsRuntimeHost,
+                port: runtimePort,
+                path: runtimePath,
+                label: pairedDevice?.deviceName ?? "SmartCane"
+            )
         )
+
+        return candidates
+    }
+
+    private func discoverBonjourEndpoint(excluding hosts: [String]) async -> EndpointProfile? {
+        let excludedHosts = Set(hosts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
+        return await withCheckedContinuation { continuation in
+            let lookup = BonjourLookup(serviceType: bonjourServiceType, timeout: 2.5) { [weak self] result in
+                Task { @MainActor in
+                    self?.activeBonjourLookup = nil
+                    guard let result else {
+                        continuation.resume(returning: nil)
+                        return
+                    }
+
+                    let normalizedHost = result.host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    guard !excludedHosts.contains(normalizedHost) else {
+                        continuation.resume(returning: nil)
+                        return
+                    }
+
+                    self?.updateDiscoveredRuntimeHost(
+                        host: result.host,
+                        deviceName: result.deviceName,
+                        wsPath: result.path
+                    )
+                    continuation.resume(
+                        returning: EndpointProfile(
+                            host: result.host,
+                            port: String(result.port),
+                            path: result.path,
+                            label: result.deviceName
+                        )
+                    )
+                }
+            }
+            activeBonjourLookup = lookup
+            lookup.start()
+        }
     }
 
     private static func disconnectedStatusMessage(for pairedDevice: PairedCaneDevice?) -> String {
@@ -865,6 +967,108 @@ final class CaneConnectionManager: ObservableObject {
         debugLogEntries.insert(DebugLogEntry(subsystem: subsystem, message: message), at: 0)
         if debugLogEntries.count > 200 {
             debugLogEntries.removeLast(debugLogEntries.count - 200)
+        }
+    }
+}
+
+private final class BonjourLookup: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
+    struct Result {
+        let host: String
+        let port: Int
+        let path: String
+        let deviceName: String
+    }
+
+    private let browser = NetServiceBrowser()
+    private let serviceType: String
+    private let timeout: TimeInterval
+    private let completion: (Result?) -> Void
+    private var didFinish = false
+    private var timeoutWork: DispatchWorkItem?
+    private var trackedServices: [NetService] = []
+
+    init(serviceType: String, timeout: TimeInterval, completion: @escaping (Result?) -> Void) {
+        self.serviceType = serviceType
+        self.timeout = timeout
+        self.completion = completion
+        super.init()
+    }
+
+    func start() {
+        browser.delegate = self
+        let timeoutWork = DispatchWorkItem { [weak self] in
+            self?.finish(nil)
+        }
+        self.timeoutWork = timeoutWork
+        DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: timeoutWork)
+        browser.searchForServices(ofType: serviceType, inDomain: "local.")
+    }
+
+    func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
+        trackedServices.append(service)
+        service.delegate = self
+        service.resolve(withTimeout: timeout)
+    }
+
+    func netServiceDidResolveAddress(_ sender: NetService) {
+        guard let host = sender.addresses?.compactMap(Self.hostString(from:)).first ?? Self.normalizedHostName(sender.hostName),
+              !host.isEmpty else {
+            return
+        }
+
+        let txt = sender.txtRecordData().flatMap(NetService.dictionary(fromTXTRecord:)) ?? [:]
+        let path = txt["path"].flatMap { String(data: $0, encoding: .utf8) } ?? "/ws"
+        let deviceName = txt["deviceName"].flatMap { String(data: $0, encoding: .utf8) } ?? sender.name
+        finish(Result(host: host, port: sender.port, path: path, deviceName: deviceName))
+    }
+
+    func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
+        if trackedServices.allSatisfy({ $0 !== sender && $0.hostName == nil && ($0.addresses?.isEmpty ?? true) }) {
+            finish(nil)
+        }
+    }
+
+    private func finish(_ result: Result?) {
+        guard !didFinish else {
+            return
+        }
+        didFinish = true
+        timeoutWork?.cancel()
+        browser.stop()
+        trackedServices.forEach { $0.stop() }
+        trackedServices.removeAll()
+        completion(result)
+    }
+
+    private static func normalizedHostName(_ hostName: String?) -> String? {
+        guard let hostName else {
+            return nil
+        }
+        return hostName.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+    }
+
+    private static func hostString(from data: Data) -> String? {
+        data.withUnsafeBytes { rawBuffer in
+            guard let baseAddress = rawBuffer.baseAddress else {
+                return nil
+            }
+
+            let sockaddrPointer = baseAddress.assumingMemoryBound(to: sockaddr.self)
+            var hostBuffer = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            let length = socklen_t(data.count)
+            let result = getnameinfo(
+                sockaddrPointer,
+                length,
+                &hostBuffer,
+                socklen_t(hostBuffer.count),
+                nil,
+                0,
+                NI_NUMERICHOST
+            )
+            guard result == 0 else {
+                return nil
+            }
+            return String(cString: hostBuffer)
         }
     }
 }

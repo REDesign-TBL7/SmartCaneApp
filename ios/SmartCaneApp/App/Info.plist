@@ -28,6 +28,10 @@
 	<string>SmartCaneApp needs your location to calculate walking routes.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>SmartCaneApp uses your local Wi-Fi network to connect to the cane on the Raspberry Pi.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_smartcane._tcp</string>
+	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>SmartCaneApp uses Bluetooth to provision the Pi with hotspot credentials and to read SmartCane diagnostics.</string>
 	<key>NSMicrophoneUsageDescription</key>
