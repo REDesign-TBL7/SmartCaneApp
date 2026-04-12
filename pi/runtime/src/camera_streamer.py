@@ -49,6 +49,8 @@ class CameraStreamer:
             self.picam = None
             return None
         image = Image.fromarray(frame)
+        if image.mode != "RGB":
+            image = image.convert("RGB")
         buffer = io.BytesIO()
         image.save(buffer, format="JPEG", quality=self.jpeg_quality, optimize=True)
         return base64.b64encode(buffer.getvalue()).decode("ascii")
