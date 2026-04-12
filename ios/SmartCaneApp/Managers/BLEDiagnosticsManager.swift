@@ -84,6 +84,7 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
     private var pendingProvisionPayload: Data?
     private var statusPollTask: Task<Void, Never>?
     private var activeSessionMode: ActiveSessionMode?
+    private var shouldAutoConnectWhenRuntimeReady = false
 
     init(connectionManager: CaneConnectionManager? = nil) {
         self.connectionManager = connectionManager
@@ -113,6 +114,22 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
             withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
+    }
+
+    func beginConnectionAssist(autoConnect: Bool = true) {
+        shouldAutoConnectWhenRuntimeReady = autoConnect
+        startScanning()
+        provisioningStateSummary = "Searching for the Pi over BLE"
+
+        if !nearbyDevices.isEmpty,
+           !isReadingDetailedStatus,
+           !isProvisioning {
+            readDetailedDiagnostics()
+        }
+    }
+
+    func endConnectionAssist() {
+        shouldAutoConnectWhenRuntimeReady = false
     }
 
     func stopScanning() {
@@ -165,6 +182,7 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
            parsedStatus.wifiClientActive == true,
            let runtimeIP = parsedStatus.runtimeIP {
             connectionManager?.updateDiscoveredRuntimeHost(host: runtimeIP)
+            attemptAutoConnectIfNeeded(runtimeIP: runtimeIP)
         }
 
         bluetoothStateSummary = "Found \(nearbyDevices.count) SmartCane BLE beacon(s)"
@@ -696,6 +714,7 @@ private extension BLEDiagnosticsManager {
 
         if let runtimeIP = payload["runtimeIP"] as? String, !runtimeIP.isEmpty {
             connectionManager?.updateDiscoveredRuntimeHost(host: runtimeIP)
+            attemptAutoConnectIfNeeded(runtimeIP: runtimeIP)
         }
 
         latestProvisioningStatusSummary = ProvisioningStatusSummary(
@@ -716,6 +735,16 @@ private extension BLEDiagnosticsManager {
         if phase == "HOTSPOT_CONNECTED" {
             isProvisioning = false
         }
+    }
+
+    func attemptAutoConnectIfNeeded(runtimeIP: String) {
+        guard shouldAutoConnectWhenRuntimeReady,
+              !runtimeIP.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        shouldAutoConnectWhenRuntimeReady = false
+        _ = connectionManager?.connectToCane()
     }
 
     func nonEmptyString(_ value: Any?) -> String? {

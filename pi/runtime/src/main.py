@@ -311,7 +311,6 @@ def print_status() -> None:
     print(f"Last Failure: {status['last_failure_reason'] or '(none)'}")
 
     ready = all([
-        status['packages_installed'],
         status['client_active'],
         bool(status['runtime_ip']),
     ])
@@ -323,7 +322,6 @@ def network_ready() -> bool:
     status = get_status()
     return all(
         [
-            status["packages_installed"],
             status["client_active"],
             bool(status["runtime_ip"]),
         ]

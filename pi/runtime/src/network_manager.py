@@ -1,6 +1,7 @@
 import logging
 import json
 import os
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -154,6 +155,15 @@ def get_ipv4_address(interface: str) -> str | None:
 
 
 def get_connected_ssid() -> str:
+    if shutil.which("iwgetid") is not None:
+        try:
+            result = run_cmd(["iwgetid", "-r"], check=False)
+            ssid = result.stdout.strip()
+            if result.returncode == 0 and ssid:
+                return ssid
+        except Exception:
+            pass
+
     try:
         result = run_cmd(
             ["nmcli", "-t", "-f", "ACTIVE,SSID", "dev", "wifi"],
@@ -163,9 +173,20 @@ def get_connected_ssid() -> str:
             active, _, ssid = line.partition(":")
             if active == "yes":
                 return ssid
-        return ""
     except Exception:
-        return ""
+        pass
+
+    if shutil.which("iw") is not None:
+        try:
+            result = run_cmd(["iw", "dev", WLAN_IFACE, "link"], check=False)
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if line.startswith("SSID: "):
+                    return line.split("SSID: ", 1)[1].strip()
+        except Exception:
+            pass
+
+    return ""
 
 
 def stop_services() -> None:
@@ -336,6 +357,10 @@ def is_hotspot_client_active() -> bool:
     ip_address = get_ipv4_address(WLAN_IFACE)
     if not ip_address:
         return False
+
+    if get_connected_ssid():
+        return True
+
     try:
         result = run_cmd(
             ["nmcli", "-t", "-f", "DEVICE,STATE", "device", "status"],
@@ -455,6 +480,7 @@ def ensure_network(do_install: bool = False) -> bool:
     # Only configure NM once. If profiles already exist NM is handling autoconnect —
     # deleting and re-adding them every few seconds would cancel any in-progress attempt.
     if _nm_connections_configured():
+        diagnostics_state.add_message("Waiting for existing NetworkManager Wi-Fi profiles to connect")
         return False
 
     logger.info("No NM connections configured yet, running initial hotspot setup...")
@@ -478,7 +504,7 @@ def get_status() -> dict:
     connected_ssid = get_connected_ssid()
     status = {
         "interface": WLAN_IFACE,
-        "mode": "PHONE_HOTSPOT_CLIENT" if client_active else "UNCONFIGURED",
+        "mode": "PHONE_HOTSPOT_CLIENT" if (client_active or (ip_address and connected_ssid)) else "UNCONFIGURED",
         "hotspot_ssid": networks[0]["ssid"] if networks else "",
         "fallback_hotspot_ssid": networks[1]["ssid"] if len(networks) > 1 else "",
         "configured_networks": [network["ssid"] for network in networks],

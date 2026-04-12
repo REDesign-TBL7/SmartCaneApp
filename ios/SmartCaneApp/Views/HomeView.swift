@@ -16,7 +16,9 @@ struct HomeView: View {
     @EnvironmentObject private var locationManager: LocationManager
     @EnvironmentObject private var speechManager: SpeechManager
     @EnvironmentObject private var visionManager: VisionManager
+    @EnvironmentObject private var bleDiagnosticsManager: BLEDiagnosticsManager
     @State private var showsNavigationSearch = false
+    @State private var showsConnectionAssistant = false
 
     var body: some View {
         NavigationStack {
@@ -55,6 +57,17 @@ struct HomeView: View {
             .onChange(of: connectionManager.caneState.connectionStatus) { newStatus in
                 speechManager.speakUrgent("Cane connection \(newStatus.rawValue.lowercased()).")
                 visionManager.setInferenceEnabled(newStatus == .connected)
+                if newStatus == .connected {
+                    showsConnectionAssistant = false
+                    bleDiagnosticsManager.endConnectionAssist()
+                }
+            }
+            .sheet(isPresented: $showsConnectionAssistant, onDismiss: {
+                bleDiagnosticsManager.endConnectionAssist()
+            }) {
+                ConnectionAssistantSheet()
+                    .environmentObject(connectionManager)
+                    .environmentObject(bleDiagnosticsManager)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -150,7 +163,7 @@ struct HomeView: View {
                 systemImage: connectionManager.caneState.connectionStatus == .connected ? "wifi" : "wifi.slash",
                 detail: connectionManager.caneState.connectionStatus == .connected
                     ? "Tap to disconnect from \(connectionManager.activeEndpointLabel)."
-                    : "Turn on Personal Hotspot, wait for BLE diagnostics to discover the Pi, then tap to connect."
+                    : "Tap to connect. If the Pi has not joined your hotspot yet, the app will find it over BLE and ask for hotspot details."
             )
         }
         .buttonStyle(.plain)
@@ -189,6 +202,16 @@ struct HomeView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Open FastVLM view")
             .accessibilityHint("Opens live scene understanding output from Pi camera frames.")
+
+            NavigationLink(destination: DiagnosticsView()) {
+                Text("Open diagnostics")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.white.opacity(0.82), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open diagnostics")
+            .accessibilityHint("Opens Pi connection, BLE provisioning, and debug logs.")
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -203,7 +226,9 @@ struct HomeView: View {
         if connectionManager.caneState.connectionStatus == .connected {
             connectionManager.disconnectFromCane()
         } else {
-            connectionManager.connectToCane()
+            bleDiagnosticsManager.beginConnectionAssist(autoConnect: true)
+            showsConnectionAssistant = true
+            _ = connectionManager.connectToCane()
         }
     }
 
@@ -250,6 +275,7 @@ struct HomeView_Previews: PreviewProvider {
         let speechManager = SpeechManager()
         let visionManager = VisionManager(connectionManager: connectionManager)
         let fusionManager = GuidanceFusionManager(connectionManager: connectionManager, visionManager: visionManager)
+        let bleDiagnosticsManager = BLEDiagnosticsManager(connectionManager: connectionManager)
 
         HomeView()
             .environmentObject(connectionManager)
@@ -258,5 +284,310 @@ struct HomeView_Previews: PreviewProvider {
             .environmentObject(profileManager)
             .environmentObject(visionManager)
             .environmentObject(VoiceCommandManager())
+            .environmentObject(bleDiagnosticsManager)
+    }
+}
+
+private struct ConnectionAssistantSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var connectionManager: CaneConnectionManager
+    @EnvironmentObject private var bleDiagnosticsManager: BLEDiagnosticsManager
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Connect over BLE")
+                        .font(.title3.weight(.bold))
+                    Text("The app is looking for the Pi over Bluetooth. If the Pi has not joined your hotspot yet, enter the hotspot details below and the app will connect as soon as the Pi reports an IP.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    assistantStatusCard
+                    assistantProvisionCard
+                }
+                .padding(16)
+            }
+            .navigationTitle("Connect Pi")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        bleDiagnosticsManager.endConnectionAssist()
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                bleDiagnosticsManager.beginConnectionAssist(autoConnect: true)
+            }
+            .onChange(of: bleDiagnosticsManager.nearbyDevices.map(\.id)) { _ in
+                guard !bleDiagnosticsManager.nearbyDevices.isEmpty,
+                      !bleDiagnosticsManager.isReadingDetailedStatus,
+                      !bleDiagnosticsManager.isProvisioning,
+                      bleDiagnosticsManager.latestProvisioningStatusSummary == nil else {
+                    return
+                }
+                bleDiagnosticsManager.readDetailedDiagnostics()
+            }
+            .onChange(of: connectionManager.caneState.connectionStatus) { newStatus in
+                if newStatus == .connected {
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private var assistantStatusCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            assistantValueRow("Bluetooth", bleDiagnosticsManager.bluetoothStateSummary)
+            assistantValueRow("Scan", bleDiagnosticsManager.isScanning ? "Searching for Pi beacons" : "Scan stopped")
+            assistantValueRow("Provisioning", bleDiagnosticsManager.provisioningStateSummary)
+            assistantValueRow("Current status", connectionManager.caneState.statusMessage)
+
+            if let status = bleDiagnosticsManager.latestProvisioningStatusSummary {
+                assistantValueRow("Pi runtime IP", status.runtimeIP ?? "Not assigned")
+                assistantValueRow("Connected SSID", status.connectedSSID ?? "Not associated")
+                assistantValueRow("Last attempted SSID", status.lastAttemptedSSID ?? "None")
+                assistantValueRow("Last failure", status.lastFailureReason ?? "None")
+                if !status.recentMessages.isEmpty {
+                    assistantValueRow("Recent Pi messages", status.recentMessages.joined(separator: " | "))
+                }
+            } else if let beacon = bleDiagnosticsManager.nearbyDevices.first?.parsedStatus {
+                assistantValueRow("Beacon stage", beacon.stageDescription ?? "Unknown")
+                assistantValueRow("Beacon error", beacon.errorDescription ?? "Unknown")
+                assistantValueRow("Beacon IP", beacon.runtimeIP ?? "Not assigned")
+            } else {
+                Text("No Pi BLE beacon seen yet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Button {
+                bleDiagnosticsManager.readDetailedDiagnostics()
+            } label: {
+                Text(bleDiagnosticsManager.isReadingDetailedStatus ? "Reading Pi status..." : "Refresh Pi BLE status")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.white.opacity(0.82), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(bleDiagnosticsManager.isReadingDetailedStatus)
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private var assistantProvisionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Hotspot details")
+                .font(.subheadline.weight(.semibold))
+
+            TextField("Hotspot name", text: $bleDiagnosticsManager.hotspotSSIDDraft)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .textFieldStyle(.roundedBorder)
+
+            SecureField("Hotspot password", text: $bleDiagnosticsManager.hotspotPasswordDraft)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .textFieldStyle(.roundedBorder)
+
+            Button {
+                bleDiagnosticsManager.provisionHotspot(
+                    ssid: bleDiagnosticsManager.hotspotSSIDDraft,
+                    password: bleDiagnosticsManager.hotspotPasswordDraft
+                )
+            } label: {
+                Text(bleDiagnosticsManager.isProvisioning ? "Sending hotspot details..." : "Send hotspot details over BLE")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.white.opacity(0.82), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(bleDiagnosticsManager.isProvisioning)
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private func assistantValueRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct DiagnosticsView: View {
+    @EnvironmentObject private var connectionManager: CaneConnectionManager
+    @EnvironmentObject private var locationManager: LocationManager
+    @EnvironmentObject private var visionManager: VisionManager
+    @EnvironmentObject private var bleDiagnosticsManager: BLEDiagnosticsManager
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 14) {
+                diagnosticsOverviewCard
+                diagnosticsBLECard
+                diagnosticsLogSection(title: "Phone to Pi logs", entries: connectionManager.debugLogEntries)
+                diagnosticsLogSection(title: "Navigation logs", entries: locationManager.debugLogEntries)
+                diagnosticsLogSection(title: "Vision logs", entries: visionManager.debugLogEntries)
+            }
+            .padding(16)
+        }
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.95, green: 0.95, blue: 0.92),
+                    Color(red: 0.90, green: 0.94, blue: 0.96)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+        .navigationTitle("Diagnostics")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            bleDiagnosticsManager.startScanning()
+        }
+    }
+
+    private var diagnosticsOverviewCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Connection overview")
+                .font(.subheadline.weight(.semibold))
+            diagnosticsValueRow("Connection", connectionManager.caneState.connectionStatus.rawValue)
+            diagnosticsValueRow("Endpoint", connectionManager.activeEndpointLabel)
+            diagnosticsValueRow("Status", connectionManager.caneState.statusMessage)
+            diagnosticsValueRow("Last ping", connectionManager.lastPingRoundTripMs.map { "\($0) ms" } ?? "Not tested yet")
+
+            Button {
+                connectionManager.sendDebugPing()
+            } label: {
+                Text("Send test ping to Pi")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.white.opacity(0.82), in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private var diagnosticsBLECard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("BLE provisioning")
+                .font(.subheadline.weight(.semibold))
+            diagnosticsValueRow("Bluetooth", bleDiagnosticsManager.bluetoothStateSummary)
+            diagnosticsValueRow("Scan", bleDiagnosticsManager.isScanning ? "Active" : "Stopped")
+            diagnosticsValueRow("Provisioning", bleDiagnosticsManager.provisioningStateSummary)
+
+            if let status = bleDiagnosticsManager.latestProvisioningStatusSummary {
+                diagnosticsValueRow("Primary hotspot", status.primaryHotspotSSID ?? "Not set")
+                diagnosticsValueRow("Configured networks", status.configuredNetworks.isEmpty ? "None" : status.configuredNetworks.joined(separator: " -> "))
+                diagnosticsValueRow("Connected SSID", status.connectedSSID ?? "Not associated")
+                diagnosticsValueRow("Runtime IP", status.runtimeIP ?? "Not assigned")
+                diagnosticsValueRow("Last attempted", status.lastAttemptedSSID ?? "None")
+                diagnosticsValueRow("Last failure", status.lastFailureReason ?? "None")
+                if !status.missingPackages.isEmpty {
+                    diagnosticsValueRow("Missing packages", status.missingPackages.joined(separator: ", "))
+                }
+                if !status.recentMessages.isEmpty {
+                    diagnosticsValueRow("Recent Pi messages", status.recentMessages.joined(separator: " | "))
+                }
+            } else if let device = bleDiagnosticsManager.nearbyDevices.first,
+                      let parsed = device.parsedStatus {
+                diagnosticsValueRow("Beacon stage", parsed.stageDescription ?? "Unknown")
+                diagnosticsValueRow("Beacon error", parsed.errorDescription ?? "Unknown")
+                diagnosticsValueRow("Beacon runtime IP", parsed.runtimeIP ?? "Not assigned")
+            } else {
+                Text("No SmartCane BLE devices seen yet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Button {
+                bleDiagnosticsManager.readDetailedDiagnostics()
+            } label: {
+                Text(bleDiagnosticsManager.isReadingDetailedStatus ? "Reading BLE diagnostics..." : "Refresh BLE diagnostics")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.white.opacity(0.82), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(bleDiagnosticsManager.isReadingDetailedStatus)
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private func diagnosticsLogSection(title: String, entries: [DebugLogEntry]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+
+            if entries.isEmpty {
+                Text("No logs yet")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(entries.prefix(20)) { entry in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(entry.timestampLabel) • \(entry.subsystem)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(entry.message)
+                            .font(.footnote)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 6)
+
+                    if entry.id != entries.prefix(20).last?.id {
+                        Divider()
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private func diagnosticsValueRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }

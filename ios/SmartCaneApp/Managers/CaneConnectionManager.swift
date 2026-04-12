@@ -140,21 +140,26 @@ final class CaneConnectionManager: ObservableObject {
         return hotspotLabel
     }
 
+    var hasKnownRuntimeEndpoint: Bool {
+        preferredEndpoint() != nil
+    }
+
     func registerFrameHandler(_ handler: @escaping (FrameSample) -> Void) {
         frameHandler = handler
     }
 
-    func connectToCane() {
+    @discardableResult
+    func connectToCane() -> Bool {
         guard webSocketTask == nil, connectTask == nil else {
             appendDebugLog("connection", "Connect ignored because a session is already active")
-            return
+            return false
         }
 
         guard let endpoint = preferredEndpoint() else {
             caneState.connectionStatus = .disconnected
-            caneState.statusMessage = "No Pi hotspot address discovered yet. Turn on Personal Hotspot and keep BLE diagnostics open."
+            caneState.statusMessage = "No Pi hotspot address discovered yet. The app is waiting for BLE discovery or hotspot provisioning."
             appendDebugLog("connection", "Connect blocked because no BLE-discovered hotspot endpoint is available yet")
-            return
+            return false
         }
 
         caneState.connectionStatus = .connecting
@@ -170,6 +175,7 @@ final class CaneConnectionManager: ObservableObject {
             }
             await self.connectToRuntime(endpoint)
         }
+        return true
     }
 
     func disconnectFromCane() {

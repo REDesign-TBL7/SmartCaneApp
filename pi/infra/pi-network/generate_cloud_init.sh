@@ -142,11 +142,22 @@ prepare_wheelhouse() {
     return
   fi
 
+  local pip_download_cmd=()
+  if python3 -m pip --version >/dev/null 2>&1; then
+    pip_download_cmd=(python3 -m pip)
+  elif command -v pip3 >/dev/null 2>&1; then
+    pip_download_cmd=(pip3)
+  elif python3 -m ensurepip --upgrade >/dev/null 2>&1 && python3 -m pip --version >/dev/null 2>&1; then
+    pip_download_cmd=(python3 -m pip)
+  else
+    fail "Could not find a usable pip on this machine. Re-run without sudo, install pip for the host Python, or provide --wheelhouse."
+  fi
+
   local generated_wheelhouse
   generated_wheelhouse=$(mktemp -d "${TMPDIR:-/tmp}/smartcane-wheelhouse.XXXXXX")
   # Redirect pip output to stderr so only the path is captured by the caller.
   # Use manylinux_2_17_aarch64 so packages like Pillow (manylinux wheels) are matched.
-  if ! python3 -m pip download --disable-pip-version-check --only-binary=:all: \
+  if ! "${pip_download_cmd[@]}" download --disable-pip-version-check --only-binary=:all: \
     --platform manylinux_2_17_aarch64 \
     --python-version "${PI_PYTHON_VERSION}" \
     --implementation cp \
@@ -154,7 +165,7 @@ prepare_wheelhouse() {
     --dest "${generated_wheelhouse}" \
     -r "${SOURCE_REPO}/runtime/requirements.txt" >&2; then
     rm -rf "${generated_wheelhouse}"
-    fail "Failed to build offline wheelhouse. Re-run with internet access on this machine or provide --wheelhouse."
+    fail "Failed to build offline wheelhouse. Re-run without sudo with internet access on this machine, or provide --wheelhouse."
   fi
 
   echo "${generated_wheelhouse}"
@@ -331,23 +342,25 @@ ssid_q = json.dumps(ssid)
 pass_q = json.dumps(password)
 
 content = f"""\
-version: 2
-renderer: NetworkManager
-wifis:
-  wlan0:
-    dhcp4: true
-    optional: true
-    access-points:
-      {ssid_q}:
-        password: {pass_q}
+network:
+  version: 2
+  renderer: NetworkManager
+  wifis:
+    wlan0:
+      dhcp4: true
+      optional: true
+      access-points:
+        {ssid_q}:
+          password: {pass_q}
 """
 with open(output_path, "w") as f:
     f.write(content)
 PY
 else
   cat > "${BOOT_DIR}/network-config" <<EOF
-version: 2
-renderer: NetworkManager
+network:
+  version: 2
+  renderer: NetworkManager
 EOF
 fi
 
