@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+DEFAULT_ENV_FILE="/etc/default/smartcane-ota"
+
+if [[ -f "${DEFAULT_ENV_FILE}" ]]; then
+  # Keep systemd-provided environment authoritative, but allow direct script
+  # execution to inherit the same defaults from the installed env file.
+  # shellcheck disable=SC1090
+  source "${DEFAULT_ENV_FILE}"
+fi
+
 REPO_ROOT="${SMARTCANE_REPO_ROOT:-/home/pi/smartcane-pi}"
 RUNTIME_DIR="${REPO_ROOT}/runtime"
 LOG_FILE="${SMARTCANE_OTA_LOG:-/var/log/smartcane-ota.log}"
@@ -116,7 +125,7 @@ if [[ ! -f "${RUNTIME_DIR}/requirements.txt" ]]; then
 fi
 
 if [[ -z "${MANIFEST_URL}" ]]; then
-  log "No OTA manifest configured; skipping OTA"
+  log "No OTA manifest configured in environment or ${DEFAULT_ENV_FILE}; skipping OTA"
   exit 0
 fi
 
