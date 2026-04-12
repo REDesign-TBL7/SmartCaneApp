@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import signal
+import socket
 import sys
 import time
 from pathlib import Path
@@ -11,7 +12,7 @@ import websockets
 from ble_diagnostics import BluetoothDiagnosticsBeacon
 from ble_provisioning import BluetoothProvisioningService
 from camera_streamer import CameraStreamer
-from comm_server import CommServer
+from comm_server import CommServer, DEVICE_NAME_PATH
 from diagnostics_state import diagnostics_state
 from gps_manager import GPSManager
 from imu_manager import HandleIMUManager
@@ -56,6 +57,16 @@ def configure_logging() -> None:
 
 
 logger = logging.getLogger(__name__)
+
+
+def current_runtime_identity() -> tuple[str, str]:
+    default_name = f"SmartCane-{socket.gethostname()}"
+    if DEVICE_NAME_PATH.exists():
+        device_name = DEVICE_NAME_PATH.read_text().strip() or default_name
+    else:
+        device_name = os.getenv("SMARTCANE_DEVICE_NAME", default_name)
+    device_id = os.getenv("SMARTCANE_DEVICE_ID", socket.gethostname())
+    return device_name, device_id
 
 
 async def telemetry_and_control_loop(
@@ -175,9 +186,12 @@ async def apply_ble_hotspot_credentials(ssid: str, password: str) -> bool:
 def provisioning_status_snapshot() -> dict[str, object]:
     snapshot = diagnostics_state.snapshot()
     status = get_status()
+    device_name, device_id = current_runtime_identity()
     return {
         **snapshot,
         **status,
+        "device_name": device_name,
+        "device_id": device_id,
     }
 
 

@@ -120,6 +120,8 @@ class ProvisioningApplication(ServiceInterface):
             **self.status_payload,
             "networkMode": snapshot.get("mode"),
             "runtimeIP": snapshot.get("runtime_ip"),
+            "deviceID": snapshot.get("device_id"),
+            "deviceName": snapshot.get("device_name"),
             "hotspotSSID": snapshot.get("hotspot_ssid"),
             "fallbackHotspotSSID": snapshot.get("fallback_hotspot_ssid"),
             "configuredNetworks": snapshot.get("configured_networks"),

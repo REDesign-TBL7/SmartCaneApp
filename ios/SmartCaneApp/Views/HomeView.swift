@@ -171,7 +171,7 @@ struct HomeView: View {
                 systemImage: connectionManager.caneState.connectionStatus == .connected ? "wifi" : "wifi.slash",
                 detail: connectionManager.caneState.connectionStatus == .connected
                     ? "Tap to disconnect from \(connectionManager.activeEndpointLabel)."
-                    : "Tap to connect. If the Pi has not joined your hotspot yet, the app will find it over BLE and ask for hotspot details."
+                    : connectionManager.caneState.statusMessage
             )
         }
         .buttonStyle(.plain)
@@ -314,6 +314,7 @@ private struct ConnectionAssistantSheet: View {
 
                     assistantStatusCard
                     assistantProvisionCard
+                    assistantConnectionLogsCard
                 }
                 .padding(16)
             }
@@ -396,6 +397,11 @@ private struct ConnectionAssistantSheet: View {
             Text("Hotspot details")
                 .font(.subheadline.weight(.semibold))
 
+            Text("Saved hotspot details are reused automatically when possible. If the Pi is waiting for credentials or the hotspot changed, edit them here and send again.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
             TextField("Hotspot name", text: $bleDiagnosticsManager.hotspotSSIDDraft)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
@@ -426,6 +432,46 @@ private struct ConnectionAssistantSheet: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(Color.white.opacity(0.55), lineWidth: 1)
         )
+    }
+
+    private var assistantConnectionLogsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Recent phone to Pi logs")
+                .font(.subheadline.weight(.semibold))
+
+            if assistantConnectionLogs.isEmpty {
+                Text("No recent connection logs yet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(assistantConnectionLogs) { entry in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("[\(entry.timestampLabel)] \(entry.subsystem)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(entry.message)
+                            .font(.footnote.monospaced())
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private var assistantConnectionLogs: [DebugLogEntry] {
+        let allowedSubsystems = Set(["connection", "bonjour", "pairing", "socket", "ble", "network"])
+        return connectionManager.debugLogEntries
+            .filter { allowedSubsystems.contains($0.subsystem) }
+            .prefix(8)
+            .map { $0 }
     }
 
     private func assistantValueRow(_ title: String, _ value: String) -> some View {

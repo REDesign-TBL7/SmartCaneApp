@@ -32,6 +32,8 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
     struct ProvisioningStatusSummary: Hashable {
         let phase: String
         let message: String
+        let deviceID: String?
+        let deviceName: String?
         let primaryHotspotSSID: String?
         let fallbackHotspotSSID: String?
         let configuredNetworks: [String]
@@ -85,11 +87,13 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
     private var statusPollTask: Task<Void, Never>?
     private var activeSessionMode: ActiveSessionMode?
     private var shouldAutoConnectWhenRuntimeReady = false
+    private var hasAttemptedAutoConnectAfterHotspotJoin = false
+    private var hasAutoProvisionedSavedCredentialsThisSession = false
 
     init(connectionManager: CaneConnectionManager? = nil) {
         self.connectionManager = connectionManager
         super.init()
-        if let credentials = hotspotCredentialsStore.load() {
+        if let credentials = savedOrDraftCredentials() {
             hotspotSSIDDraft = credentials.ssid
             hotspotPasswordDraft = credentials.password
         }
@@ -118,8 +122,14 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
 
     func beginConnectionAssist(autoConnect: Bool = true) {
         shouldAutoConnectWhenRuntimeReady = autoConnect
+        hasAttemptedAutoConnectAfterHotspotJoin = false
+        hasAutoProvisionedSavedCredentialsThisSession = false
         startScanning()
-        provisioningStateSummary = "Searching for the Pi over BLE"
+        if autoConnect, hasSavedHotspotCredentials {
+            provisioningStateSummary = "Searching for the Pi over BLE. Saved hotspot details are ready if the Pi asks for them."
+        } else {
+            provisioningStateSummary = "Searching for the Pi over BLE"
+        }
 
         if !nearbyDevices.isEmpty,
            !isReadingDetailedStatus,
@@ -130,6 +140,8 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
 
     func endConnectionAssist() {
         shouldAutoConnectWhenRuntimeReady = false
+        hasAttemptedAutoConnectAfterHotspotJoin = false
+        hasAutoProvisionedSavedCredentialsThisSession = false
     }
 
     func stopScanning() {
@@ -214,6 +226,8 @@ final class BLEDiagnosticsManager: NSObject, ObservableObject {
 
         pendingProvisionPayload = payload
         activeSessionMode = .provisioning
+        hasAttemptedAutoConnectAfterHotspotJoin = false
+        hasAutoProvisionedSavedCredentialsThisSession = true
         connectedProvisioningPeripheral = target.peripheral
         credentialsCharacteristic = nil
         statusCharacteristic = nil
@@ -703,30 +717,65 @@ private extension BLEDiagnosticsManager {
 
         let phase = payload["phase"] as? String ?? "UNKNOWN"
         let message = payload["message"] as? String ?? "No message"
-        provisioningStateSummary = "\(phase): \(message)"
+        let runtimeIP = nonEmptyString(payload["runtimeIP"])
+        let deviceID = nonEmptyString(payload["deviceID"])
+        let deviceName = nonEmptyString(payload["deviceName"])
+        let connectedSSID = nonEmptyString(payload["connectedSSID"])
+        let willReuseSavedCredentials = shouldAutoReuseSavedCredentials(
+            phase: phase,
+            connectedSSID: connectedSSID
+        )
 
-        if let runtimeIP = payload["runtimeIP"] as? String, !runtimeIP.isEmpty {
-            connectionManager?.updateDiscoveredRuntimeHost(host: runtimeIP)
+        if willReuseSavedCredentials {
+            provisioningStateSummary = "Pi is waiting for hotspot details. Reusing the saved hotspot credentials now."
+        } else {
+            provisioningStateSummary = "\(phase): \(message)"
+        }
+
+        connectionManager?.updateBLEProvisioningStatus(
+            phase: phase,
+            message: message,
+            connectedSSID: connectedSSID,
+            runtimeIP: runtimeIP,
+            usingSavedCredentials: willReuseSavedCredentials
+        )
+
+        maybeAutoProvisionSavedCredentials(
+            phase: phase,
+            connectedSSID: connectedSSID
+        )
+
+        if let runtimeIP {
+            connectionManager?.updateDiscoveredRuntimeHost(host: runtimeIP, deviceName: deviceName, deviceID: deviceID)
             attemptAutoConnectIfNeeded(runtimeIP: runtimeIP)
         }
 
         latestProvisioningStatusSummary = ProvisioningStatusSummary(
             phase: phase,
             message: message,
+            deviceID: deviceID,
+            deviceName: deviceName,
             primaryHotspotSSID: nonEmptyString(payload["hotspotSSID"]),
             fallbackHotspotSSID: nonEmptyString(payload["fallbackHotspotSSID"]),
             configuredNetworks: stringArray(payload["configuredNetworks"]),
-            connectedSSID: nonEmptyString(payload["connectedSSID"]),
+            connectedSSID: connectedSSID,
             lastConnectedSSID: nonEmptyString(payload["lastConnectedSSID"]),
             lastAttemptedSSID: nonEmptyString(payload["lastAttemptedSSID"]),
             lastFailureReason: nonEmptyString(payload["lastFailureReason"]),
             missingPackages: stringArray(payload["missingPackages"]),
             recentMessages: stringArray(payload["recentMessages"]),
-            runtimeIP: nonEmptyString(payload["runtimeIP"])
+            runtimeIP: runtimeIP
         )
 
         if phase == "HOTSPOT_CONNECTED" {
-            isProvisioning = false
+            attemptAutoConnectAfterHotspotJoin()
+            isProvisioning = true
+            if runtimeIP == nil {
+                provisioningStateSummary = "HOTSPOT_CONNECTED: Joined hotspot. Waiting for runtime IP"
+            } else {
+                provisioningStateSummary = "HOTSPOT_CONNECTED: Joined hotspot. Waiting for Pi runtime to accept connections"
+            }
+            scheduleProvisionStatusPolling(iterations: 12)
         }
     }
 
@@ -736,8 +785,70 @@ private extension BLEDiagnosticsManager {
             return
         }
 
-        shouldAutoConnectWhenRuntimeReady = false
-        _ = connectionManager?.connectToCane()
+        hasAttemptedAutoConnectAfterHotspotJoin = true
+        if connectionManager?.connectToCane() == true {
+            provisioningStateSummary = "Pi reported runtime IP \(runtimeIP). Connecting over Wi-Fi now."
+        }
+    }
+
+    func attemptAutoConnectAfterHotspotJoin() {
+        guard shouldAutoConnectWhenRuntimeReady,
+              !hasAttemptedAutoConnectAfterHotspotJoin else {
+            return
+        }
+
+        hasAttemptedAutoConnectAfterHotspotJoin = true
+        if connectionManager?.connectToCane() == true {
+            provisioningStateSummary = "Pi joined the hotspot. Trying the saved runtime endpoint and Bonjour now."
+        }
+    }
+
+    func maybeAutoProvisionSavedCredentials(phase: String, connectedSSID: String?) {
+        guard shouldAutoConnectWhenRuntimeReady,
+              !hasAutoProvisionedSavedCredentialsThisSession,
+              connectedSSID == nil else {
+            return
+        }
+
+        let waitingForProvisioning = phase == "BLE_READY" || phase == "WAITING_FOR_HOTSPOT" || phase == "INVALID_PAYLOAD"
+        guard waitingForProvisioning,
+              let credentials = savedOrDraftCredentials() else {
+            return
+        }
+
+        hasAutoProvisionedSavedCredentialsThisSession = true
+        provisioningStateSummary = "Pi is waiting for hotspot details. Reusing saved hotspot credentials."
+        provisionHotspot(ssid: credentials.ssid, password: credentials.password)
+    }
+
+    var hasSavedHotspotCredentials: Bool {
+        savedOrDraftCredentials() != nil
+    }
+
+    func shouldAutoReuseSavedCredentials(phase: String, connectedSSID: String?) -> Bool {
+        guard shouldAutoConnectWhenRuntimeReady,
+              !hasAutoProvisionedSavedCredentialsThisSession,
+              connectedSSID == nil else {
+            return false
+        }
+
+        let waitingForProvisioning = phase == "BLE_READY" || phase == "WAITING_FOR_HOTSPOT" || phase == "INVALID_PAYLOAD"
+        return waitingForProvisioning && hasSavedHotspotCredentials
+    }
+
+    func savedOrDraftCredentials() -> HotspotCredentials? {
+        if let credentials = hotspotCredentialsStore.load(),
+           !credentials.ssid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           !credentials.password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return credentials
+        }
+
+        let trimmedSSID = hotspotSSIDDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPassword = hotspotPasswordDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSSID.isEmpty, !trimmedPassword.isEmpty else {
+            return nil
+        }
+        return HotspotCredentials(ssid: trimmedSSID, password: trimmedPassword)
     }
 
     func nonEmptyString(_ value: Any?) -> String? {

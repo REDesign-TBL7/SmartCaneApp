@@ -77,6 +77,7 @@ final class CaneConnectionManager: ObservableObject {
     private let runtimePath = "/ws"
     private let mdnsRuntimeHost = "smartcane-pi.local"
     private let bonjourServiceType = "_smartcane._tcp."
+    private let provisionalDeviceID = "smartcane-hotspot-client"
 
     private var currentEndpoint: EndpointProfile?
     private var webSocketTask: URLSessionWebSocketTask?
@@ -168,6 +169,8 @@ final class CaneConnectionManager: ObservableObject {
         }
 
         caneState.connectionStatus = .connecting
+        let firstCandidate = candidates.first?.host ?? mdnsRuntimeHost
+        caneState.statusMessage = "Connecting to Pi runtime via \(firstCandidate)..."
         if !isWiFiActive && !isCellularActive {
             appendDebugLog(
                 "network",
@@ -244,7 +247,7 @@ final class CaneConnectionManager: ObservableObject {
         appendDebugLog("pairing", "Saved hotspot device profile for \(pairedDevice.summaryText) at \(host)")
     }
 
-    func updateDiscoveredRuntimeHost(host: String, deviceName: String? = nil, wsPath: String = "/ws") {
+    func updateDiscoveredRuntimeHost(host: String, deviceName: String? = nil, deviceID: String? = nil, wsPath: String = "/ws") {
         let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedHost.isEmpty, trimmedHost != "0.0.0.0" else {
             return
@@ -253,11 +256,26 @@ final class CaneConnectionManager: ObservableObject {
         let normalizedPath = Self.normalizedPath(wsPath, fallback: runtimePath)
         let existing = pairedDevice
         let trimmedDeviceName = deviceName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let trimmedDeviceID = deviceID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let existingDeviceID = existing?.deviceID.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let existingHasVerifiedIdentity = !existingDeviceID.isEmpty && existingDeviceID != provisionalDeviceID
+        let discoveredHasVerifiedIdentity = !trimmedDeviceID.isEmpty && trimmedDeviceID != provisionalDeviceID
+
+        if existingHasVerifiedIdentity && discoveredHasVerifiedIdentity && existingDeviceID != trimmedDeviceID {
+            appendDebugLog(
+                "pairing",
+                "Ignored discovered runtime host \(trimmedHost) because it belongs to a different cane (\(trimmedDeviceID))"
+            )
+            return
+        }
+
         let resolvedDeviceName = !trimmedDeviceName.isEmpty
             ? trimmedDeviceName
             : existing?.deviceName ?? "SmartCane"
         let updated = PairedCaneDevice(
-            deviceID: existing?.deviceID ?? "smartcane-hotspot-client",
+            deviceID: existingHasVerifiedIdentity
+                ? existingDeviceID
+                : (discoveredHasVerifiedIdentity ? trimmedDeviceID : (existing?.deviceID ?? provisionalDeviceID)),
             deviceName: resolvedDeviceName,
             host: trimmedHost,
             port: runtimePort,
@@ -274,6 +292,43 @@ final class CaneConnectionManager: ObservableObject {
             caneState.statusMessage = "Pi discovered at \(trimmedHost). Turn on Personal Hotspot, then connect."
         }
         appendDebugLog("ble", "Discovered hotspot runtime endpoint \(trimmedHost):\(runtimePort)\(normalizedPath)")
+    }
+
+    func updateBLEProvisioningStatus(
+        phase: String,
+        message: String,
+        connectedSSID: String?,
+        runtimeIP: String?,
+        usingSavedCredentials: Bool = false
+    ) {
+        guard caneState.connectionStatus != .connected else {
+            return
+        }
+
+        let trimmedRuntimeIP = runtimeIP?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let trimmedSSID = connectedSSID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let networkLabel = trimmedSSID.isEmpty ? hotspotLabel : trimmedSSID
+
+        switch phase {
+        case "HOTSPOT_CONNECTED":
+            if !trimmedRuntimeIP.isEmpty {
+                caneState.statusMessage = "Pi joined \(networkLabel) and reported runtime IP \(trimmedRuntimeIP). Tap Connect."
+            } else {
+                caneState.statusMessage = "Pi joined \(networkLabel). Waiting for runtime IP from BLE."
+            }
+        case "JOINING_HOTSPOT":
+            caneState.statusMessage = "Pi is joining \(networkLabel)..."
+        case "BLE_READY", "WAITING_FOR_HOTSPOT", "INVALID_PAYLOAD":
+            if usingSavedCredentials {
+                caneState.statusMessage = "Pi is waiting for hotspot details. Reusing the saved hotspot credentials now."
+            } else if !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                caneState.statusMessage = message
+            }
+        default:
+            if !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                caneState.statusMessage = message
+            }
+        }
     }
 
     func sendNavigationCommand(_ command: NavigationCommand, instructionText: String) {
@@ -361,7 +416,7 @@ final class CaneConnectionManager: ObservableObject {
 
     private func connectToRuntime(_ candidates: [EndpointProfile]) async {
         let pairedAt = pairedDevice?.pairedAt ?? Date()
-        let expectedDeviceID = pairedDevice?.deviceID
+        let expectedDeviceID = expectedVerifiedDeviceID
         appendDebugLog(
             "connection",
             "Trying runtime endpoints: \(candidates.map { "\($0.host):\($0.port)" }.joined(separator: ", "))"
@@ -479,7 +534,7 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     private func receivePairInfo(on task: URLSessionWebSocketTask) async throws -> InboundPairInfoMessage {
-        let deadline = Date().addingTimeInterval(3.0)
+        let deadline = Date().addingTimeInterval(5.0)
 
         while Date() < deadline {
             let secondsRemaining = max(0.1, deadline.timeIntervalSinceNow)
@@ -781,7 +836,7 @@ final class CaneConnectionManager: ObservableObject {
             }
 
             connection.start(queue: queue)
-            queue.asyncAfter(deadline: .now() + 1.2, execute: timeoutWork)
+            queue.asyncAfter(deadline: .now() + 3.0, execute: timeoutWork)
         }
     }
 
@@ -913,6 +968,7 @@ final class CaneConnectionManager: ObservableObject {
                     self?.updateDiscoveredRuntimeHost(
                         host: result.host,
                         deviceName: result.deviceName,
+                        deviceID: result.deviceID,
                         wsPath: result.path
                     )
                     continuation.resume(
@@ -969,6 +1025,15 @@ final class CaneConnectionManager: ObservableObject {
             debugLogEntries.removeLast(debugLogEntries.count - 200)
         }
     }
+
+    private var expectedVerifiedDeviceID: String? {
+        guard let deviceID = pairedDevice?.deviceID.trimmingCharacters(in: .whitespacesAndNewlines),
+              !deviceID.isEmpty,
+              deviceID != provisionalDeviceID else {
+            return nil
+        }
+        return deviceID
+    }
 }
 
 private final class BonjourLookup: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
@@ -977,6 +1042,7 @@ private final class BonjourLookup: NSObject, NetServiceBrowserDelegate, NetServi
         let port: Int
         let path: String
         let deviceName: String
+        let deviceID: String?
     }
 
     private let browser = NetServiceBrowser()
@@ -1019,7 +1085,8 @@ private final class BonjourLookup: NSObject, NetServiceBrowserDelegate, NetServi
         let txt = sender.txtRecordData().flatMap(NetService.dictionary(fromTXTRecord:)) ?? [:]
         let path = txt["path"].flatMap { String(data: $0, encoding: .utf8) } ?? "/ws"
         let deviceName = txt["deviceName"].flatMap { String(data: $0, encoding: .utf8) } ?? sender.name
-        finish(Result(host: host, port: sender.port, path: path, deviceName: deviceName))
+        let deviceID = txt["deviceID"].flatMap { String(data: $0, encoding: .utf8) }
+        finish(Result(host: host, port: sender.port, path: path, deviceName: deviceName, deviceID: deviceID))
     }
 
     func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
