@@ -1,17 +1,19 @@
 # Smart Cane Monorepo
 
-This repository contains the two runtime codebases for the smart cane system.
+This repository contains the app, embedded, and Pi runtime codebases for the smart cane system.
 
 ## Layout
 
-```
+```text
 ios/       SwiftUI app for navigation, voice UX, and on-device FastVLM inference
-pi/        Python runtime for WebSocket comms, sensors, handle IMU, camera streaming, and ESP32 command forwarding
+pi/        Deployable Pi bundle containing runtime/ and infra/
 esp32/     Arduino motor controller for DRV8313 motor sequencing and motor-unit IMU telemetry
 protocol/  Shared JSON protocol schema between iOS and Pi
 docs/      Architecture, safety, and calibration notes
-infra/     Pi network provisioning and service install scripts
 ```
+
+`pi/` is the only subtree that needs to be copied to the Pi.
+The root-level `infra/` path is a compatibility symlink into `pi/infra`.
 
 ## Run iOS app
 
@@ -23,36 +25,36 @@ infra/     Pi network provisioning and service install scripts
 
 ### Option 1: One-command Install (Recommended)
 
-On Pi, run as root:
+On Pi, run as root from the uploaded `pi/` bundle:
 
 ```bash
-cd /path/to/SmartCaneApp
+cd /path/to/smartcane-pi
 sudo infra/pi-network/setup.sh
 ```
 
-This installs packages, sets up venv, configures network, and starts the service.
+This installs packages, configures OTA, sets up the runtime, and starts the service.
 
 ### Option 2: Manual Setup
 
 ```bash
-cd pi
+cd /path/to/smartcane-pi/runtime
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 sudo .venv/bin/python src/main.py
 ```
 
-The runtime auto-configures AP mode on first run.
+The runtime stays in hotspot-client / BLE provisioning flow instead of Pi AP mode.
 
 ### Option 3: Service with Custom Path
 
 ```bash
 # Replace with your actual repo path
-REPO_ROOT=/home/pi/SmartCaneApp
+REPO_ROOT=/home/pi/smartcane-pi
 
 # Setup venv
-python3 -m venv $REPO_ROOT/pi/.venv
-$REPO_ROOT/pi/.venv/bin/pip install -r $REPO_ROOT/pi/requirements.txt
+python3 -m venv $REPO_ROOT/runtime/.venv
+$REPO_ROOT/runtime/.venv/bin/pip install -r $REPO_ROOT/runtime/requirements.txt
 
 # Install systemd service
 sudo cp infra/pi-network/systemd/smartcane-runtime.service /etc/systemd/system/
@@ -83,9 +85,13 @@ python src/main.py --status      # Check network status
 python src/main.py --help        # Show help
 ```
 
-## WebSocket Endpoint
+## OTA
 
-`ws://192.168.4.1:8080/ws`
+Pi OTA is Pi-only. The Pi downloads a published `pi/` bundle from GitHub releases instead of pulling the whole monorepo.
+
+Publisher workflow:
+
+- `.github/workflows/pi-cd.yml`
 
 ## Environment Variables
 
@@ -98,12 +104,13 @@ python src/main.py --help        # Show help
 
 ## Connectivity
 
-- iOS cane transport is Wi-Fi only (cellular disabled)
-- First-time: Pi hosts `SmartCane` WiFi for phone to connect
-- Normal use: Phone connects to Pi's WiFi, Pi advertises via Bonjour
+- BLE handles hotspot provisioning and Pi diagnostics.
+- The Pi joins the iPhone Personal Hotspot for the demo path.
+- The app reads the Pi runtime IP from BLE diagnostics and connects over Wi-Fi.
 
 ## Setup Guides
 
 - Full testing guide: `docs/testing-guide.md`
 - Pi networking: `docs/pi-network-setup.md`
+- Deployment runbook: `docs/deployment-runbook.md`
 - FastVLM model integration: `docs/fastvlm-integration.md`

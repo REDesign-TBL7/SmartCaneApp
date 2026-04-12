@@ -5,9 +5,9 @@ Wants=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=__SMARTCANE_REPO_ROOT__/pi
-ExecStart=__SMARTCANE_REPO_ROOT__/pi/.venv/bin/python __SMARTCANE_REPO_ROOT__/pi/src/main.py
-ExecReload=__SMARTCANE_REPO_ROOT__/pi/.venv/bin/python -c "import os, signal; os.kill(int(open('/run/smartcane-runtime.pid').read()), signal.SIGHUP)"
+WorkingDirectory=__SMARTCANE_REPO_ROOT__/runtime
+ExecStart=__SMARTCANE_REPO_ROOT__/infra/pi-network/run_pi_runtime.sh
+ExecReload=/bin/sh -c "kill -HUP \$(cat /run/smartcane-runtime.pid)"
 Restart=always
 RestartSec=5
 User=root

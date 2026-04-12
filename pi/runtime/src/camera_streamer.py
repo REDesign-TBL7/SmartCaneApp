@@ -1,6 +1,7 @@
 import base64
 import io
 import time
+from typing import Any
 
 try:
     from picamera2 import Picamera2
@@ -38,13 +39,18 @@ class CameraStreamer:
         image.save(buffer, format="JPEG", quality=self.jpeg_quality, optimize=True)
         return base64.b64encode(buffer.getvalue()).decode("ascii")
 
-    def frame_packet(self) -> dict[str, object] | None:
+    def frame_packet(self, handle_imu_sample: dict[str, Any] | None = None) -> dict[str, object] | None:
         encoded = self.next_frame_base64()
         if encoded is None:
             return None
-        return {
+        packet: dict[str, object] = {
             "type": "CAMERA_FRAME",
             "protocolVersion": 1,
             "timestampMs": int(time.time() * 1000),
             "jpegBase64": encoded,
         }
+        if handle_imu_sample is not None:
+            packet["handleImuAvailable"] = bool(handle_imu_sample.get("available", False))
+            packet["handleImuHeadingDegrees"] = float(handle_imu_sample.get("heading_degrees", 0.0))
+            packet["handleImuGyroZDegreesPerSecond"] = float(handle_imu_sample.get("gyro_z_dps", 0.0))
+        return packet

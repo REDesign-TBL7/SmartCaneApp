@@ -229,7 +229,7 @@ struct UserProfileView: View {
                         .font(.subheadline.weight(.semibold))
 
                     if let pairedDevice = connectionManager.pairedDevice {
-                        Text("Direct endpoint \(pairedDevice.host):\(pairedDevice.port)")
+                        Text("Runtime endpoint \(pairedDevice.host):\(pairedDevice.port)")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }

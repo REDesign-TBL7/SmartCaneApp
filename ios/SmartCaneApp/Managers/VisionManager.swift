@@ -10,6 +10,9 @@ final class VisionManager: ObservableObject {
     @Published var latestFrameAgeMs: Int = 0
     @Published var latestFramePreview: UIImage?
     @Published var latestFrameByteCount: Int = 0
+    @Published var latestFrameHandleIMUAvailable = false
+    @Published var latestFrameHandleIMUHeadingDegrees: Double = 0
+    @Published var latestFrameHandleIMUGyroZDegreesPerSecond: Double = 0
     @Published var debugLogEntries: [DebugLogEntry] = []
 
     private let connectionManager: CaneConnectionManager
@@ -20,13 +23,19 @@ final class VisionManager: ObservableObject {
 
     init(connectionManager: CaneConnectionManager) {
         self.connectionManager = connectionManager
-        connectionManager.registerFrameHandler { [weak self] frameData in
+        connectionManager.registerFrameHandler { [weak self] frameSample in
             Task { @MainActor in
-                self?.latestFrameData = frameData
+                self?.latestFrameData = frameSample.jpegData
                 self?.latestFrameTimestamp = Date()
-                self?.latestFrameByteCount = frameData.count
-                self?.latestFramePreview = UIImage(data: frameData)
-                self?.appendDebugLog("frame", "Received frame \(frameData.count) bytes")
+                self?.latestFrameByteCount = frameSample.jpegData.count
+                self?.latestFramePreview = UIImage(data: frameSample.jpegData)
+                self?.latestFrameHandleIMUAvailable = frameSample.handleImuAvailable ?? false
+                self?.latestFrameHandleIMUHeadingDegrees = frameSample.handleImuHeadingDegrees ?? 0
+                self?.latestFrameHandleIMUGyroZDegreesPerSecond = frameSample.handleImuGyroZDegreesPerSecond ?? 0
+                self?.appendDebugLog(
+                    "frame",
+                    "Received frame \(frameSample.jpegData.count) bytes with handle IMU \(frameSample.handleImuAvailable == true ? "on" : "off") gyroZ \(Int(frameSample.handleImuGyroZDegreesPerSecond ?? 0))"
+                )
             }
         }
         appendDebugLog("vision", "Vision manager initialized")

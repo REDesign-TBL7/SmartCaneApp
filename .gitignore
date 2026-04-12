@@ -25,3 +25,13 @@ Pods/
 __pycache__/
 *.pyc
 .venv/
+
+# Compatibility symlinks (infra -> pi/infra, pi/src -> pi/runtime/src, etc.)
+# These exist locally for convenience but are not part of the repo.
+/infra
+/pi/src
+/pi/logs
+/pi/requirements.txt
+
+# Runtime logs
+/pi/runtime/logs/

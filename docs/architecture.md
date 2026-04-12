@@ -3,7 +3,7 @@
 ## Runtimes
 
 - `ios/`: route guidance, voice UX, FastVLM inference, command generation
-- `pi/`: iOS WebSocket server, handle-mounted IMU backup for camera deblur, heartbeat safety, telemetry, camera frame uplink, and final command forwarding to ESP32
+- `pi/runtime/`: iOS WebSocket server, handle-mounted IMU backup for camera deblur, heartbeat safety, telemetry, camera frame uplink, and final command forwarding to ESP32
 - `esp32/`: DRV8313 motor control from Pi serial commands plus the motor-unit IMU and ultrasonic sensing used for demo safety input
 
 ## Safety
@@ -36,12 +36,12 @@ distance back over serial.
 
 ## Network policy
 
-- iOS cane transport disables cellular access at URLSession level.
-- Cane connection is only attempted while Wi-Fi interface is active.
+- BLE handles provisioning and diagnostics.
+- The runtime connection is only attempted once the Pi has joined the configured Wi-Fi network.
 
 ## Connectivity profile
 
-- `PI_ACCESS_POINT`: the Pi always hosts the `SmartCane` Wi-Fi network on `192.168.4.1/24`.
-- The iPhone joins that Wi-Fi network directly and opens `ws://192.168.4.1:8080/ws`.
-- There is no hotspot switching, setup HTTP service, or Bonjour / mDNS discovery in the active connection path.
-- The Pi server always binds `0.0.0.0:8080`; the app uses the fixed AP gateway address.
+- Demo path: the Pi joins the iPhone Personal Hotspot.
+- BLE carries hotspot provisioning plus detailed Pi diagnostics.
+- The app reads the Pi runtime IP from BLE and then opens `ws://<pi-ip>:8080/ws`.
+- The Pi server always binds `0.0.0.0:8080`.

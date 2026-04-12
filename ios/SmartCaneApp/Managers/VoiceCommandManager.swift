@@ -253,7 +253,7 @@ final class VoiceCommandManager: ObservableObject {
         if commandText.contains("connect") {
             connectionManager.connectToCane()
             speechManager.speak(
-                "Connecting to the cane over SmartCane Wi-Fi.",
+                "Connecting to the cane over Personal Hotspot.",
                 interrupt: true
             )
             return
@@ -319,14 +319,14 @@ final class VoiceCommandManager: ObservableObject {
     private func statusSummary(connectionManager: CaneConnectionManager, locationManager: LocationManager) -> String {
         let pairing = connectionManager.pairedDevice.map {
             "Cane network \($0.deviceName)."
-        } ?? "Join the SmartCane Wi-Fi network first."
+        } ?? "Turn on Personal Hotspot and wait for BLE diagnostics to discover the Pi first."
         let connection = "Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased())."
         let navigation = locationManager.hasActiveNavigation
             ? "Navigating to \(locationManager.navigationStatusValue)."
             : "No active navigation."
         let connectionCommand = connectionManager.caneState.connectionStatus == .connected
             ? "Say disconnect cane to disconnect."
-            : "Say connect cane after joining SmartCane Wi-Fi."
+            : "Say connect cane after turning on Personal Hotspot."
         let navigationCommand = locationManager.hasActiveNavigation
             ? "Say stop, or search for a new destination."
             : "Search for a destination."

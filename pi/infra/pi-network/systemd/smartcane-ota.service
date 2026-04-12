@@ -1,0 +1,11 @@
+[Unit]
+Description=SmartCane OTA Update
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/smartcane-ota
+ExecStart=__SMARTCANE_REPO_ROOT__/infra/pi-network/ota_update.sh
+User=root
+

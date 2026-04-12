@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-REPO_ROOT=$(cd -- "${SCRIPT_DIR}/../.." && pwd)
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+REPO_ROOT=$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)
 WLAN_IFACE="${WLAN_IFACE:-wlan0}"
 STATE_DIR="/etc/smartcane"
 MODE_FILE="${STATE_DIR}/network_mode"
@@ -463,7 +463,7 @@ install_services() {
   require_root install
   echo "[1/7] Installing Pi network packages"
   apt-get update
-  apt-get install -y hostapd dnsmasq iw rfkill iproute2 dhcpcd5
+  apt-get install -y hostapd dnsmasq iw rfkill iproute2 dhcpcd5 wpasupplicant bluez python3-venv
 
   echo "[2/7] Installing systemd units for repo root ${REPO_ROOT}"
   sed "s|__SMARTCANE_REPO_ROOT__|${REPO_ROOT}|g" "${RUNTIME_SERVICE_SRC}" >"${RUNTIME_SERVICE_DEST}"
@@ -482,6 +482,8 @@ EOF
   systemctl daemon-reload
 
   echo "[6/7] Enabling and restarting SmartCane services"
+  systemctl enable bluetooth >/dev/null 2>&1 || true
+  systemctl restart bluetooth >/dev/null 2>&1 || true
   systemctl enable smartcane-network-bootstrap.service
   systemctl restart smartcane-network-bootstrap.service
   systemctl enable smartcane-runtime.service

@@ -150,12 +150,12 @@ struct HomeView: View {
                 systemImage: connectionManager.caneState.connectionStatus == .connected ? "wifi" : "wifi.slash",
                 detail: connectionManager.caneState.connectionStatus == .connected
                     ? "Tap to disconnect from \(connectionManager.activeEndpointLabel)."
-                    : "Join the SmartCane Wi-Fi network, then tap to connect."
+                    : "Turn on Personal Hotspot, wait for BLE diagnostics to discover the Pi, then tap to connect."
             )
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Connection \(connectionManager.caneState.connectionStatus.rawValue)")
-        .accessibilityHint(connectionManager.caneState.connectionStatus == .connected ? "Double-tap to disconnect the cane." : "Double-tap to connect to the cane over the SmartCane Wi-Fi network.")
+        .accessibilityHint(connectionManager.caneState.connectionStatus == .connected ? "Double-tap to disconnect the cane." : "Double-tap to connect to the cane over the iPhone hotspot link.")
     }
 
     private var navigationButton: some View {
@@ -213,10 +213,10 @@ struct HomeView: View {
             : "No active navigation. Use Speak to search."
         let pairing = connectionManager.pairedDevice.map {
             "Cane network \($0.deviceName)."
-        } ?? "Join the SmartCane Wi-Fi network first."
+        } ?? "Turn on Personal Hotspot and wait for BLE diagnostics to discover the Pi first."
         let connectionCommand = connectionManager.caneState.connectionStatus == .connected
             ? "Say disconnect cane to disconnect."
-            : "Say connect cane after joining SmartCane Wi-Fi."
+            : "Say connect cane after turning on Personal Hotspot."
         let summary = "\(pairing) Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased()). \(navigation) \(connectionCommand)"
         speechManager.speak(summary, interrupt: true, force: true)
     }

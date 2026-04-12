@@ -14,6 +14,14 @@ final class CaneConnectionManager: ObservableObject {
         let label: String
     }
 
+    struct FrameSample {
+        let jpegData: Data
+        let timestampMs: Int64?
+        let handleImuAvailable: Bool?
+        let handleImuHeadingDegrees: Double?
+        let handleImuGyroZDegreesPerSecond: Double?
+    }
+
     private final class ProbeCompletionGate: @unchecked Sendable {
         private let lock = NSLock()
         private var didFinish = false
@@ -62,11 +70,10 @@ final class CaneConnectionManager: ObservableObject {
         let pairedDevice: PairedCaneDevice
     }
 
-    private let hotspotLabel = "SmartCane Wi-Fi"
+    private let hotspotLabel = "iPhone Personal Hotspot"
     private let pairingStorageKey = "smart_cane_paired_device"
-    private let directAccessPointHost = "192.168.4.1"
-    private let directAccessPointPort = "8080"
-    private let directAccessPointPath = "/ws"
+    private let runtimePort = "8080"
+    private let runtimePath = "/ws"
 
     private var currentEndpoint: EndpointProfile?
     private var webSocketTask: URLSessionWebSocketTask?
@@ -74,7 +81,7 @@ final class CaneConnectionManager: ObservableObject {
     private var connectTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
     private var receiveTask: Task<Void, Never>?
-    private var frameHandler: ((Data) -> Void)?
+    private var frameHandler: ((FrameSample) -> Void)?
     private var savedRouteCommand: (command: NavigationCommand, instructionText: String)?
     private var isSafetyOverrideActive = false
     private var isVisionSafetyOverrideActive = false
@@ -88,16 +95,12 @@ final class CaneConnectionManager: ObservableObject {
     private var isCellularActive = false
 
     init() {
-        pairedDevice = Self.defaultAccessPointDevice(
-            from: Self.loadPairedDevice(storageKey: pairingStorageKey)
-        )
+        pairedDevice = Self.loadPairedDevice(storageKey: pairingStorageKey)
         caneState.connectionStatus = .disconnected
         caneState.currentInstruction = "No active navigation"
         caneState.currentNavigationCommand = .stop
         caneState.obstacleMessage = "No obstacles detected"
-        caneState.statusMessage = pairedDevice.map {
-            "Join the \($0.deviceName) Wi-Fi network, then connect."
-        } ?? "Join the SmartCane Wi-Fi network, then connect."
+        caneState.statusMessage = Self.disconnectedStatusMessage(for: pairedDevice)
         appendDebugLog("connection", "Manager initialized")
 
         pathMonitor.pathUpdateHandler = { [weak self] path in
@@ -122,14 +125,22 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     var networkModeDescription: String {
-        "Join the Pi-hosted SmartCane Wi-Fi network. The app connects directly to 192.168.4.1."
+        "Turn on iPhone Personal Hotspot. The Pi joins it, BLE diagnostics reports the Pi IP, and the app connects to that runtime endpoint."
     }
 
     var activeEndpointLabel: String {
-        pairedDevice?.deviceName ?? currentEndpoint?.label ?? hotspotLabel
+        if let currentEndpoint {
+            return "\(currentEndpoint.label) @ \(currentEndpoint.host):\(currentEndpoint.port)"
+        }
+
+        if let pairedDevice {
+            return "\(pairedDevice.deviceName) @ \(pairedDevice.host):\(pairedDevice.port)"
+        }
+
+        return hotspotLabel
     }
 
-    func registerFrameHandler(_ handler: @escaping (Data) -> Void) {
+    func registerFrameHandler(_ handler: @escaping (FrameSample) -> Void) {
         frameHandler = handler
     }
 
@@ -139,18 +150,25 @@ final class CaneConnectionManager: ObservableObject {
             return
         }
 
+        guard let endpoint = preferredEndpoint() else {
+            caneState.connectionStatus = .disconnected
+            caneState.statusMessage = "No Pi hotspot address discovered yet. Turn on Personal Hotspot and keep BLE diagnostics open."
+            appendDebugLog("connection", "Connect blocked because no BLE-discovered hotspot endpoint is available yet")
+            return
+        }
+
         caneState.connectionStatus = .connecting
-        if !isWiFiActive {
+        if !isWiFiActive && !isCellularActive {
             appendDebugLog(
                 "network",
-                "Wi-Fi interface not reported by iOS path monitor; still attempting local hotspot connection"
+                "Neither Wi-Fi nor cellular is reported by iOS path monitor; still attempting hotspot connection"
             )
         }
         connectTask = Task { [weak self] in
             guard let self else {
                 return
             }
-            await self.connectDirectAccessPoint()
+            await self.connectToRuntime(endpoint)
         }
     }
 
@@ -172,9 +190,7 @@ final class CaneConnectionManager: ObservableObject {
 
         caneState.connectionStatus = .disconnected
         caneState.currentNavigationCommand = .stop
-        caneState.statusMessage = pairedDevice.map {
-            "Disconnected from \($0.deviceName). Ready to reconnect."
-        } ?? "Wi-Fi cane link closed"
+        caneState.statusMessage = Self.disconnectedStatusMessage(for: pairedDevice)
         pendingPingStartedAt = nil
         lastPingRoundTripMs = nil
     }
@@ -184,10 +200,10 @@ final class CaneConnectionManager: ObservableObject {
             disconnectFromCane()
         }
 
-        pairedDevice = Self.defaultAccessPointDevice(from: nil)
+        pairedDevice = nil
         UserDefaults.standard.removeObject(forKey: pairingStorageKey)
-        caneState.statusMessage = "Reset to the default SmartCane Wi-Fi endpoint."
-        appendDebugLog("pairing", "Reset cane connection to direct AP defaults")
+        caneState.statusMessage = Self.disconnectedStatusMessage(for: nil)
+        appendDebugLog("pairing", "Cleared saved hotspot endpoint")
     }
 
     func rememberProvisionedCane(deviceID: String, deviceName: String, wsPath: String = "/ws") {
@@ -199,17 +215,54 @@ final class CaneConnectionManager: ObservableObject {
             return
         }
 
+        guard let host = pairedDevice?.host else {
+            appendDebugLog("pairing", "Skipped provisional pairing save because no hotspot runtime host has been discovered yet")
+            return
+        }
+
         let pairedDevice = PairedCaneDevice(
             deviceID: trimmedDeviceID,
             deviceName: trimmedDeviceName,
-            host: directAccessPointHost,
-            port: directAccessPointPort,
+            host: host,
+            port: runtimePort,
             wsPath: wsPath,
             pairedAt: Date()
         )
         savePairedDevice(pairedDevice)
-        caneState.statusMessage = "Saved \(trimmedDeviceName) at the direct SmartCane Wi-Fi endpoint."
-        appendDebugLog("pairing", "Saved direct AP device profile for \(pairedDevice.summaryText)")
+        caneState.statusMessage = "Saved \(trimmedDeviceName) at hotspot endpoint \(host):\(runtimePort)."
+        appendDebugLog("pairing", "Saved hotspot device profile for \(pairedDevice.summaryText) at \(host)")
+    }
+
+    func updateDiscoveredRuntimeHost(host: String, deviceName: String? = nil, wsPath: String = "/ws") {
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedHost.isEmpty, trimmedHost != "0.0.0.0" else {
+            return
+        }
+
+        let normalizedPath = Self.normalizedPath(wsPath, fallback: runtimePath)
+        let existing = pairedDevice
+        let trimmedDeviceName = deviceName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let resolvedDeviceName = !trimmedDeviceName.isEmpty
+            ? trimmedDeviceName
+            : existing?.deviceName ?? "SmartCane"
+        let updated = PairedCaneDevice(
+            deviceID: existing?.deviceID ?? "smartcane-hotspot-client",
+            deviceName: resolvedDeviceName,
+            host: trimmedHost,
+            port: runtimePort,
+            wsPath: normalizedPath,
+            pairedAt: existing?.pairedAt ?? Date()
+        )
+
+        guard existing != updated else {
+            return
+        }
+
+        savePairedDevice(updated)
+        if caneState.connectionStatus != .connected {
+            caneState.statusMessage = "Pi discovered at \(trimmedHost). Turn on Personal Hotspot, then connect."
+        }
+        appendDebugLog("ble", "Discovered hotspot runtime endpoint \(trimmedHost):\(runtimePort)\(normalizedPath)")
     }
 
     func sendNavigationCommand(_ command: NavigationCommand, instructionText: String) {
@@ -295,27 +348,18 @@ final class CaneConnectionManager: ObservableObject {
         return obstacle >= 0 && obstacle < 45
     }
 
-    private func connectDirectAccessPoint() async {
+    private func connectToRuntime(_ endpoint: EndpointProfile) async {
         let pairedAt = pairedDevice?.pairedAt ?? Date()
-        let endpoint = EndpointProfile(
-            host: directAccessPointHost,
-            port: directAccessPointPort,
-            path: directAccessPointPath,
-            label: hotspotLabel
-        )
-
-        appendDebugLog(
-            "connection",
-            "Connecting directly to Pi AP at \(directAccessPointHost):\(directAccessPointPort)\(directAccessPointPath)"
-        )
+        let expectedDeviceID = pairedDevice?.deviceID
+        appendDebugLog("connection", "Connecting to hotspot runtime at \(endpoint.host):\(endpoint.port)\(endpoint.path)")
 
         do {
             let established = try await establishRuntimeSession(
                 to: endpoint,
-                expectedDeviceID: nil,
+                expectedDeviceID: expectedDeviceID,
                 pairedAt: pairedAt
             )
-            savePairedDevice(Self.defaultAccessPointDevice(from: established.pairedDevice))
+            savePairedDevice(established.pairedDevice)
             adoptOpenWebSocket(
                 session: established.session,
                 task: established.task,
@@ -323,8 +367,8 @@ final class CaneConnectionManager: ObservableObject {
             )
         } catch {
             caneState.connectionStatus = .disconnected
-            caneState.statusMessage = "Join the SmartCane Wi-Fi network on iPhone, then try connecting again."
-            appendDebugLog("connection", "Direct AP connection failed: \(error.localizedDescription)")
+            caneState.statusMessage = "Hotspot connection failed. Keep Personal Hotspot on and use BLE diagnostics to confirm the Pi IP."
+            appendDebugLog("connection", "Hotspot runtime connection failed: \(error.localizedDescription)")
         }
 
         connectTask = nil
@@ -344,7 +388,7 @@ final class CaneConnectionManager: ObservableObject {
             throw PairingError.handshakeTimedOut
         }
 
-        let session = URLSession(configuration: makeWiFiOnlyConfiguration())
+        let session = URLSession(configuration: makeLocalNetworkConfiguration())
         let task = session.webSocketTask(with: url)
         task.resume()
 
@@ -505,7 +549,15 @@ final class CaneConnectionManager: ObservableObject {
                let base64 = framePacket.jpegBase64,
                let frameData = Data(base64Encoded: base64) {
                 appendDebugLog("frame", "Received camera frame \(frameData.count) bytes")
-                frameHandler?(frameData)
+                frameHandler?(
+                    FrameSample(
+                        jpegData: frameData,
+                        timestampMs: framePacket.timestampMs,
+                        handleImuAvailable: framePacket.handleImuAvailable,
+                        handleImuHeadingDegrees: framePacket.handleImuHeadingDegrees,
+                        handleImuGyroZDegreesPerSecond: framePacket.handleImuGyroZDegreesPerSecond
+                    )
+                )
                 return
             }
 
@@ -528,7 +580,15 @@ final class CaneConnectionManager: ObservableObject {
                let base64 = framePacket.jpegBase64,
                let frameData = Data(base64Encoded: base64) {
                 appendDebugLog("frame", "Received camera frame \(frameData.count) bytes")
-                frameHandler?(frameData)
+                frameHandler?(
+                    FrameSample(
+                        jpegData: frameData,
+                        timestampMs: framePacket.timestampMs,
+                        handleImuAvailable: framePacket.handleImuAvailable,
+                        handleImuHeadingDegrees: framePacket.handleImuHeadingDegrees,
+                        handleImuGyroZDegreesPerSecond: framePacket.handleImuGyroZDegreesPerSecond
+                    )
+                )
                 return
             }
 
@@ -599,12 +659,12 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     private func connectionStatusSummary(connectedTo endpoint: EndpointProfile) -> String {
-        let internetPath = isCellularActive ? "Cellular internet active" : "Cellular internet availability managed by iPhone"
+        let internetPath = isCellularActive ? "Personal Hotspot is using cellular backhaul" : "Local hotspot path active"
         if let pairedDevice {
-            return "Connected to \(pairedDevice.deviceName) over \(endpoint.label). Cane traffic stays on Wi-Fi only. \(internetPath)."
+            return "Connected to \(pairedDevice.deviceName) at \(endpoint.host):\(endpoint.port) over Personal Hotspot. \(internetPath)."
         }
 
-        return "Connected via \(endpoint.label). Cane traffic stays on Wi-Fi only. \(internetPath)."
+        return "Connected to Pi runtime at \(endpoint.host):\(endpoint.port) over Personal Hotspot. \(internetPath)."
     }
 
     private func adoptOpenWebSocket(
@@ -619,8 +679,10 @@ final class CaneConnectionManager: ObservableObject {
         caneState.connectionStatus = .connected
         caneState.statusMessage = connectionStatusSummary(connectedTo: endpoint)
 
-        appendDebugLog("connection", "Sending AP test confirmation if the Pi armed a rollback window")
-        send(.confirmAPTest(clientName: "SmartCane iPhone"))
+        if endpoint.host == "192.168.4.1" {
+            appendDebugLog("connection", "Sending AP test confirmation for legacy AP rollback flow")
+            send(.confirmAPTest(clientName: "SmartCane iPhone"))
+        }
         startReceiveLoop()
         startHeartbeatLoop()
     }
@@ -723,9 +785,9 @@ final class CaneConnectionManager: ObservableObject {
         }
     }
 
-    private func makeWiFiOnlyConfiguration() -> URLSessionConfiguration {
+    private func makeLocalNetworkConfiguration() -> URLSessionConfiguration {
         let config = URLSessionConfiguration.default
-        config.allowsCellularAccess = false
+        config.allowsCellularAccess = true
         config.allowsConstrainedNetworkAccess = true
         config.allowsExpensiveNetworkAccess = true
         config.waitsForConnectivity = true
@@ -747,15 +809,25 @@ final class CaneConnectionManager: ObservableObject {
         return try? JSONDecoder().decode(PairedCaneDevice.self, from: data)
     }
 
-    private static func defaultAccessPointDevice(from existing: PairedCaneDevice?) -> PairedCaneDevice {
-        PairedCaneDevice(
-            deviceID: existing?.deviceID ?? "smartcane-direct-ap",
-            deviceName: existing?.deviceName ?? "SmartCane",
-            host: "192.168.4.1",
-            port: "8080",
-            wsPath: "/ws",
-            pairedAt: existing?.pairedAt ?? Date()
+    private func preferredEndpoint() -> EndpointProfile? {
+        guard let pairedDevice else {
+            return nil
+        }
+
+        return EndpointProfile(
+            host: pairedDevice.host,
+            port: pairedDevice.port,
+            path: pairedDevice.wsPath ?? runtimePath,
+            label: pairedDevice.deviceName
         )
+    }
+
+    private static func disconnectedStatusMessage(for pairedDevice: PairedCaneDevice?) -> String {
+        if let pairedDevice {
+            return "Turn on Personal Hotspot. Last Pi endpoint: \(pairedDevice.host):\(pairedDevice.port)."
+        }
+
+        return "Turn on Personal Hotspot and keep BLE diagnostics open until the Pi reports an IP."
     }
 
     private func payloadTypeDescription(for data: Data) -> String {

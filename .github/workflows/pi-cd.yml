@@ -1,0 +1,67 @@
+name: Pi CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'pi/**'
+      - '.github/workflows/pi-cd.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-pi-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compute bundle metadata
+        id: meta
+        run: |
+          version="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          published_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "published_at=${published_at}" >> "${GITHUB_OUTPUT}"
+          echo "bundle_url=https://github.com/${GITHUB_REPOSITORY}/releases/download/pi-latest/smartcane-pi-bundle.tar.gz" >> "${GITHUB_OUTPUT}"
+
+      - name: Build pi bundle
+        run: |
+          chmod +x pi/infra/pi-network/build_pi_bundle.sh
+          pi/infra/pi-network/build_pi_bundle.sh \
+            --source-dir pi \
+            --output-dir dist \
+            --version "${{ steps.meta.outputs.version }}" \
+            --published-at "${{ steps.meta.outputs.published_at }}" \
+            --bundle-url "${{ steps.meta.outputs.bundle_url }}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartcane-pi-bundle
+          path: |
+            dist/smartcane-pi-bundle.tar.gz
+            dist/smartcane-pi-manifest.json
+            dist/smartcane-pi-sha256.txt
+
+      - name: Publish rolling pi release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: "dist/smartcane-pi-bundle.tar.gz,dist/smartcane-pi-manifest.json,dist/smartcane-pi-sha256.txt"
+          makeLatest: true
+          name: SmartCane Pi Latest
+          prerelease: true
+          replacesArtifacts: true
+          tag: pi-latest
+          body: |
+            Automated Pi-only release bundle for the Raspberry Pi runtime.
+            Version: ${{ steps.meta.outputs.version }}

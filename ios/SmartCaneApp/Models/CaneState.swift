@@ -258,4 +258,7 @@ struct InboundFrameMessage: Codable {
     let type: String
     let timestampMs: Int64?
     let jpegBase64: String?
+    let handleImuAvailable: Bool?
+    let handleImuHeadingDegrees: Double?
+    let handleImuGyroZDegreesPerSecond: Double?
 }

@@ -65,6 +65,15 @@ class HandleIMUManager:
                 exc,
             )
 
+    @property
+    def diagnostics(self) -> dict[str, str | int | bool]:
+        return {
+            "available": self.available,
+            "bus": self.bus_id,
+            "address": hex(self.device_address),
+            "error": self.error_message,
+        }
+
     def _read_word(self, reg: int) -> int:
         high = self.bus.read_byte_data(self.device_address, reg)
         low = self.bus.read_byte_data(self.device_address, reg + 1)

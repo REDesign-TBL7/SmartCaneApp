@@ -23,6 +23,8 @@
 		A1000000000000000000004D /* FastVLMAppleEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000004E /* FastVLMAppleEngine.swift */; };
 		A1000000000000000000004F /* VoiceCommandManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000050 /* VoiceCommandManager.swift */; };
 		A10000000000000000000051 /* VoiceCommandButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000052 /* VoiceCommandButton.swift */; };
+		A10000000000000000000058 /* BLEDiagnosticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000059 /* BLEDiagnosticsManager.swift */; };
+		A10000000000000000000060 /* HotspotCredentialsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000061 /* HotspotCredentialsStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +46,8 @@
 		A10000000000000000000050 /* VoiceCommandManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandManager.swift; sourceTree = "<group>"; };
 		A10000000000000000000052 /* VoiceCommandButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCommandButton.swift; sourceTree = "<group>"; };
 		A10000000000000000000053 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10000000000000000000059 /* BLEDiagnosticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEDiagnosticsManager.swift; sourceTree = "<group>"; };
+		A10000000000000000000061 /* HotspotCredentialsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotspotCredentialsStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -116,6 +120,8 @@
 				A1000000000000000000004C /* GuidanceFusionManager.swift */,
 				A1000000000000000000004E /* FastVLMAppleEngine.swift */,
 				A10000000000000000000050 /* VoiceCommandManager.swift */,
+				A10000000000000000000059 /* BLEDiagnosticsManager.swift */,
+				A10000000000000000000061 /* HotspotCredentialsStore.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -214,6 +220,8 @@
 				A1000000000000000000004D /* FastVLMAppleEngine.swift in Sources */,
 				A1000000000000000000004F /* VoiceCommandManager.swift in Sources */,
 				A10000000000000000000051 /* VoiceCommandButton.swift in Sources */,
+				A10000000000000000000058 /* BLEDiagnosticsManager.swift in Sources */,
+				A10000000000000000000060 /* HotspotCredentialsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

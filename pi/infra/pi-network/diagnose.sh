@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 WLAN="${WLAN_IFACE:-wlan0}"
 
 RED='\033[0;31m'
@@ -90,7 +90,7 @@ check_dnsmasq_conf() {
 }
 
 check_python_venv() {
-    local venv="${SCRIPT_DIR}/../../pi/.venv"
+    local venv="${SCRIPT_DIR}/../../runtime/.venv"
     if [[ -d "$venv" ]]; then
         pass "Python venv exists"
         if "$venv/bin/python" -c "import websockets" 2>/dev/null; then

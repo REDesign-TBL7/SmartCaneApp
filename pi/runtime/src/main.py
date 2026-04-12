@@ -9,18 +9,21 @@ from pathlib import Path
 
 import websockets
 
+from ble_diagnostics import BluetoothDiagnosticsBeacon
+from ble_provisioning import BluetoothProvisioningService
 from camera_streamer import CameraStreamer
 from comm_server import CommServer
+from diagnostics_state import diagnostics_state
 from gps_manager import GPSManager
 from imu_manager import HandleIMUManager
 from motor_controller import MotorController
-from network_manager import ensure_network, get_status, setup_ap
+from network_manager import ensure_network, get_status, setup_hotspot_client, store_hotspot_credentials
 from safety_manager import SafetyManager
 
 PID_FILE = Path("/run/smartcane-runtime.pid")
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NETWORK_SCRIPT = REPO_ROOT / "infra" / "pi-network" / "smartcane_network.sh"
-PI_DIR = Path(__file__).resolve().parents[1]
+RUNTIME_DIR = Path(__file__).resolve().parents[1]
 AP_TEST_RUNTIME_UNIT = "smartcane-ap-test-runtime"
 
 def write_pid() -> None:
@@ -124,36 +127,143 @@ async def telemetry_and_control_loop(
 
 
 async def camera_stream_loop(
-    comm_server: CommServer, camera_streamer: CameraStreamer
+    comm_server: CommServer,
+    camera_streamer: CameraStreamer,
+    handle_imu_manager: HandleIMUManager,
 ) -> None:
     while True:
-        packet = camera_streamer.frame_packet()
+        handle_imu = handle_imu_manager.read_camera_deblur_sample()
+        packet = camera_streamer.frame_packet(handle_imu)
         if packet is not None:
             await comm_server.broadcast_telemetry(packet)
-            logger.debug("Broadcasted camera frame packet")
+            logger.debug(
+                "Broadcasted camera frame packet with handle IMU available=%s gyroZ=%.2f",
+                bool(handle_imu["available"]),
+                float(handle_imu["gyro_z_dps"]),
+            )
         await asyncio.sleep(0.45)
+
+
+async def bluetooth_diagnostics_loop(
+    beacon: BluetoothDiagnosticsBeacon,
+    connected_clients_provider,
+    fault_code_provider,
+) -> None:
+    await asyncio.to_thread(beacon.publish, True)
+    while True:
+        beacon.update_runtime_state(
+            fault_code=fault_code_provider(),
+            connected_clients=connected_clients_provider(),
+            runtime_active=bool(diagnostics_state.snapshot()["runtime_active"]),
+        )
+        await asyncio.to_thread(beacon.publish, False)
+        await asyncio.sleep(4)
+
+
+async def apply_ble_hotspot_credentials(ssid: str, password: str) -> bool:
+    logger.info("Applying hotspot credentials received over BLE for SSID=%s", ssid)
+    diagnostics_state.add_message(f"Applying BLE hotspot credentials for {ssid}")
+    store_hotspot_credentials(ssid, password, source="BLE")
+    diagnostics_state.set_stage("PJ")
+    success = await asyncio.to_thread(setup_hotspot_client, False)
+    if success:
+        diagnostics_state.clear_error()
+        diagnostics_state.set_stage("NR")
+        return True
+
+    diagnostics_state.set_error("HC")
+    return False
+
+
+def provisioning_status_snapshot() -> dict[str, object]:
+    snapshot = diagnostics_state.snapshot()
+    status = get_status()
+    return {
+        **snapshot,
+        **status,
+    }
+
+
+async def wait_for_network_ready() -> None:
+    while True:
+        if ensure_network(do_install=False):
+            diagnostics_state.clear_error()
+            diagnostics_state.set_stage("NR")
+            diagnostics_state.add_message("Network marked ready")
+            return
+
+        status = get_status()
+        snapshot = diagnostics_state.snapshot()
+        if status["hotspot_ssid"]:
+            diagnostics_state.set_stage("PJ")
+            if snapshot["last_error_code"] == "NO":
+                diagnostics_state.clear_error()
+            diagnostics_state.add_message(
+                f"Waiting for Wi-Fi join on {status['last_attempted_ssid'] or status['hotspot_ssid']}"
+            )
+        else:
+            diagnostics_state.set_stage("PV")
+            if snapshot["last_error_code"] == "NO":
+                diagnostics_state.set_error("NF")
+            diagnostics_state.add_message("Waiting for hotspot credentials over BLE or boot config")
+        await asyncio.sleep(3)
 
 
 async def run_server() -> None:
     configure_logging()
     logger.info("Starting SmartCane Pi runtime")
+    diagnostics_state.set_runtime_active(True)
+    diagnostics_state.set_stage("BO")
+    diagnostics_state.add_message("Runtime booting")
     write_pid()
-    
-    if not ensure_network(do_install=False):
-        logger.error("Network not ready. Run setup first: sudo infra/pi-network/setup.sh")
-        remove_pid()
-        sys.exit(1)
-    
-    comm_server = CommServer()
-    motor_controller = MotorController()
-    handle_imu_manager = HandleIMUManager()
-    gps_manager = GPSManager()
-    safety_manager = SafetyManager()
-    camera_streamer = CameraStreamer()
+    ble_beacon = BluetoothDiagnosticsBeacon()
+    provisioning_service = BluetoothProvisioningService(
+        apply_credentials=apply_ble_hotspot_credentials,
+        status_provider=provisioning_status_snapshot,
+    )
+    diagnostics_task = asyncio.create_task(
+        bluetooth_diagnostics_loop(
+            ble_beacon,
+            connected_clients_provider=lambda: 0,
+            fault_code_provider=lambda: "NONE",
+        )
+    )
+    await provisioning_service.start()
 
     try:
+        if not network_ready():
+            logger.info("Network not ready; staying in BLE provisioning mode until hotspot credentials work")
+            diagnostics_state.add_message("Network not ready; BLE provisioning mode active")
+            await wait_for_network_ready()
+
+        comm_server = CommServer()
+        motor_controller = MotorController()
+        handle_imu_manager = HandleIMUManager()
+        if handle_imu_manager.available:
+            diagnostics_state.add_message(
+                f"Handle IMU ready on I2C bus {handle_imu_manager.bus_id} addr {hex(handle_imu_manager.device_address)}"
+            )
+        else:
+            diagnostics_state.add_message(
+                f"Handle IMU unavailable on I2C bus {handle_imu_manager.bus_id}: {handle_imu_manager.error_message or 'unknown error'}"
+            )
+        gps_manager = GPSManager()
+        safety_manager = SafetyManager()
+        camera_streamer = CameraStreamer()
+        diagnostics_task.cancel()
+        await asyncio.gather(diagnostics_task, return_exceptions=True)
+        diagnostics_task = asyncio.create_task(
+            bluetooth_diagnostics_loop(
+                ble_beacon,
+                connected_clients_provider=lambda: len(comm_server.clients),
+                fault_code_provider=lambda: safety_manager.fault_code,
+            )
+        )
+
         async with websockets.serve(comm_server.handler, "0.0.0.0", 8080):
             logger.info("WebSocket server listening on 0.0.0.0:8080")
+            diagnostics_state.set_stage("WL")
+            diagnostics_state.add_message("WebSocket server listening on port 8080")
             await asyncio.gather(
                 telemetry_and_control_loop(
                     comm_server,
@@ -162,31 +272,51 @@ async def run_server() -> None:
                     gps_manager,
                     safety_manager,
                 ),
-                camera_stream_loop(comm_server, camera_streamer),
+                camera_stream_loop(comm_server, camera_streamer, handle_imu_manager),
+                diagnostics_task,
             )
     finally:
         logger.info("Shutting down SmartCane Pi runtime")
+        diagnostics_state.set_runtime_active(False)
+        diagnostics_state.set_stage("SD")
+        diagnostics_state.add_message("Runtime shutting down")
+        diagnostics_task.cancel()
+        await asyncio.gather(diagnostics_task, return_exceptions=True)
+        await provisioning_service.stop()
+        ble_beacon.update_runtime_state(fault_code="NONE", connected_clients=0, runtime_active=False)
+        try:
+            await asyncio.to_thread(ble_beacon.stop)
+        except Exception:
+            logger.debug("BLE diagnostics beacon stop failed", exc_info=True)
         remove_pid()
-        motor_controller.close()
+        if "motor_controller" in locals():
+            motor_controller.close()
 
 
 def print_status() -> None:
     status = get_status()
     print("=== SmartCane Network Status ===")
     print(f"Interface: {status['interface']}")
-    print(f"SSID: {status['ap_ssid']}")
-    print(f"IP: {status['ap_ip']}")
+    print(f"Mode: {status['mode']}")
+    print(f"Hotspot SSID: {status['hotspot_ssid'] or '(not configured)'}")
+    print(f"Fallback SSID: {status['fallback_hotspot_ssid'] or '(not configured)'}")
+    print(f"Configured Networks: {', '.join(status['configured_networks']) or '(none)'}")
+    print(f"Connected SSID: {status['connected_ssid'] or '(not associated)'}")
+    print(f"IP: {status['runtime_ip'] or '(not assigned)'}")
     print(f"Root: {status['is_root']}")
     print(f"Packages: {'OK' if status['packages_installed'] else 'MISSING'}")
-    print(f"Hostapd: {'active' if status['hostapd_active'] else 'inactive'}")
-    print(f"Dnsmasq: {'active' if status['dnsmasq_active'] else 'inactive'}")
-    print(f"IP Configured: {status['ip_configured']}")
+    if status["missing_packages"]:
+        print(f"Missing Packages: {', '.join(status['missing_packages'])}")
+    print(f"wpa_supplicant: {'active' if status['wpa_supplicant_active'] else 'inactive'}")
+    print(f"Hotspot Client: {'active' if status['client_active'] else 'inactive'}")
+    print(f"Last Connected SSID: {status['last_connected_ssid'] or '(none)'}")
+    print(f"Last Attempted SSID: {status['last_attempted_ssid'] or '(none)'}")
+    print(f"Last Failure: {status['last_failure_reason'] or '(none)'}")
     
     ready = all([
         status['packages_installed'],
-        status['hostapd_active'],
-        status['dnsmasq_active'],
-        status['ip_configured'],
+        status['client_active'],
+        bool(status['runtime_ip']),
     ])
     print(f"\nStatus: {'READY' if ready else 'NOT READY'}")
     sys.exit(0 if ready else 1)
@@ -197,9 +327,8 @@ def network_ready() -> bool:
     return all(
         [
             status["packages_installed"],
-            status["hostapd_active"],
-            status["dnsmasq_active"],
-            status["ip_configured"],
+            status["client_active"],
+            bool(status["runtime_ip"]),
         ]
     )
 
@@ -250,7 +379,7 @@ def arm_ap_test_runtime(wait_seconds: int) -> None:
             "--description",
             "SmartCane AP test runtime",
             "--property",
-            f"WorkingDirectory={PI_DIR}",
+            f"WorkingDirectory={RUNTIME_DIR}",
             "--setenv",
             "PYTHONUNBUFFERED=1",
             sys.executable,
@@ -270,8 +399,16 @@ def main() -> None:
                 print("ERROR: --setup requires root. Run: sudo python src/main.py --setup")
                 sys.exit(1)
             configure_logging()
-            logger.info("Running AP setup...")
-            success = setup_ap(do_install=True)
+            logger.info("Running hotspot client setup...")
+            success = setup_hotspot_client(do_install=True)
+            sys.exit(0 if success else 1)
+        elif arg == "--setup-hotspot":
+            if os.geteuid() != 0:
+                print("ERROR: --setup-hotspot requires root. Run: sudo python src/main.py --setup-hotspot")
+                sys.exit(1)
+            configure_logging()
+            logger.info("Running hotspot client setup...")
+            success = setup_hotspot_client(do_install=True)
             sys.exit(0 if success else 1)
         elif arg == "--ap-test":
             if os.geteuid() != 0:
@@ -300,13 +437,14 @@ def main() -> None:
         elif arg == "--status":
             print_status()
         elif arg == "--help":
-            print("Usage: python src/main.py [--setup|--ap-test [seconds]|--confirm-ap-test|--rollback-ap-test|--status|--help]")
-            print("  No args: Start runtime (assumes network already configured)")
-            print("  --setup: Configure AP mode (includes package install)")
-            print("  --ap-test [seconds]: Switch to AP mode with timed rollback for headless testing")
+            print("Usage: python src/main.py [--setup|--setup-hotspot|--ap-test [seconds]|--confirm-ap-test|--rollback-ap-test|--status|--help]")
+            print("  No args: Start runtime (auto-imports hotspot credentials from /boot if available)")
+            print("  --setup: Configure hotspot client mode (includes package install)")
+            print("  --setup-hotspot: Alias for --setup")
+            print("  --ap-test [seconds]: Legacy Pi AP test mode with timed rollback for headless testing")
             print("  --confirm-ap-test: Cancel the pending AP rollback and keep AP mode")
             print("  --rollback-ap-test: Restore the previous client Wi-Fi immediately")
-            print("  --wait-for-network [seconds]: Wait for AP readiness, then start runtime")
+            print("  --wait-for-network [seconds]: Wait for hotspot-client readiness, then start runtime")
             print("  --status: Print network status")
             sys.exit(0)
         else:

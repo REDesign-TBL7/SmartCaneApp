@@ -128,7 +128,10 @@
         "type": { "const": "CAMERA_FRAME" },
         "protocolVersion": { "const": 1 },
         "timestampMs": { "type": "integer" },
-        "jpegBase64": { "type": "string" }
+        "jpegBase64": { "type": "string" },
+        "handleImuAvailable": { "type": "boolean" },
+        "handleImuHeadingDegrees": { "type": "number" },
+        "handleImuGyroZDegreesPerSecond": { "type": "number" }
       }
     }
   ]

@@ -1,3 +1,6 @@
 websockets>=14.0
 zeroconf>=0.130
 pyserial>=3.5
+dbus-next>=0.2.3
+smbus2>=0.4.3
+Pillow>=10.0.0
