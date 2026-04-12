@@ -10,6 +10,7 @@ VERSION=""
 BUNDLE_URL=""
 PUBLISHED_AT=""
 WHEELHOUSE=""
+PI_PYTHON_VERSION="${SMARTCANE_PI_PYTHON_VERSION:-311}"
 BUNDLE_NAME="smartcane-pi-bundle.tar.gz"
 MANIFEST_NAME="smartcane-pi-manifest.json"
 CHECKSUM_NAME="smartcane-pi-sha256.txt"
@@ -17,7 +18,7 @@ CHECKSUM_NAME="smartcane-pi-sha256.txt"
 usage() {
   cat <<EOF
 Usage:
-  $0 --output-dir /path/to/dist --version 20260412-abcdef0 [--source-dir /path/to/pi] [--bundle-url https://.../smartcane-pi-bundle.tar.gz] [--published-at 2026-04-12T12:00:00Z] [--wheelhouse /path/to/wheelhouse]
+  $0 --output-dir /path/to/dist --version 20260412-abcdef0 [--source-dir /path/to/pi] [--bundle-url https://.../smartcane-pi-bundle.tar.gz] [--published-at 2026-04-12T12:00:00Z] [--wheelhouse /path/to/wheelhouse] [--pi-python-version 311]
 
 Builds a deployable Pi OTA bundle containing:
   - runtime/
@@ -51,9 +52,15 @@ prepare_wheelhouse() {
 
   local generated_wheelhouse
   generated_wheelhouse=$(mktemp -d "${TMPDIR:-/tmp}/smartcane-bundle-wheelhouse.XXXXXX")
+  # Redirect pip output to stderr so only the path is captured by the caller.
+  # Use --platform/--python-version to fetch ARM wheels that will run on the Pi.
   python3 -m pip download --disable-pip-version-check --only-binary=:all: \
+    --platform linux_aarch64 \
+    --python-version "${PI_PYTHON_VERSION}" \
+    --implementation cp \
+    --abi "cp${PI_PYTHON_VERSION}" \
     --dest "${generated_wheelhouse}" \
-    -r "${SOURCE_DIR}/runtime/requirements.txt"
+    -r "${SOURCE_DIR}/runtime/requirements.txt" >&2
   echo "${generated_wheelhouse}"
 }
 
@@ -81,6 +88,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --wheelhouse)
       WHEELHOUSE="$2"
+      shift 2
+      ;;
+    --pi-python-version)
+      PI_PYTHON_VERSION="$2"
       shift 2
       ;;
     -h|--help)
