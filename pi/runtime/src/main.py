@@ -2,7 +2,6 @@ import asyncio
 import logging
 import os
 import signal
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -21,10 +20,7 @@ from network_manager import ensure_network, get_status, setup_hotspot_client, st
 from safety_manager import SafetyManager
 
 PID_FILE = Path("/run/smartcane-runtime.pid")
-REPO_ROOT = Path(__file__).resolve().parents[2]
-NETWORK_SCRIPT = REPO_ROOT / "infra" / "pi-network" / "smartcane_network.sh"
-RUNTIME_DIR = Path(__file__).resolve().parents[1]
-AP_TEST_RUNTIME_UNIT = "smartcane-ap-test-runtime"
+
 
 def write_pid() -> None:
     PID_FILE.write_text(str(os.getpid()))
@@ -186,7 +182,8 @@ def provisioning_status_snapshot() -> dict[str, object]:
 
 async def wait_for_network_ready() -> None:
     while True:
-        if ensure_network(do_install=False):
+        connected = await asyncio.to_thread(ensure_network, False)
+        if connected:
             diagnostics_state.clear_error()
             diagnostics_state.set_stage("NR")
             diagnostics_state.add_message("Network marked ready")
@@ -307,12 +304,12 @@ def print_status() -> None:
     print(f"Packages: {'OK' if status['packages_installed'] else 'MISSING'}")
     if status["missing_packages"]:
         print(f"Missing Packages: {', '.join(status['missing_packages'])}")
-    print(f"wpa_supplicant: {'active' if status['wpa_supplicant_active'] else 'inactive'}")
+    print(f"NetworkManager: {'connected' if status['nm_active'] else 'not connected'}")
     print(f"Hotspot Client: {'active' if status['client_active'] else 'inactive'}")
     print(f"Last Connected SSID: {status['last_connected_ssid'] or '(none)'}")
     print(f"Last Attempted SSID: {status['last_attempted_ssid'] or '(none)'}")
     print(f"Last Failure: {status['last_failure_reason'] or '(none)'}")
-    
+
     ready = all([
         status['packages_installed'],
         status['client_active'],
@@ -342,93 +339,17 @@ def wait_for_network(timeout_seconds: int) -> bool:
     return network_ready()
 
 
-def run_network_script(*args: str) -> int:
-    command = [str(NETWORK_SCRIPT), *args]
-    result = subprocess.run(command, check=False)
-    return result.returncode
-
-
-def runtime_service_installed() -> bool:
-    result = subprocess.run(
-        ["systemctl", "cat", "smartcane-runtime.service"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    return result.returncode == 0
-
-
-def arm_ap_test_runtime(wait_seconds: int) -> None:
-    subprocess.run(
-        ["systemctl", "stop", f"{AP_TEST_RUNTIME_UNIT}.service"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    subprocess.run(
-        ["systemctl", "reset-failed", f"{AP_TEST_RUNTIME_UNIT}.service"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    subprocess.run(
-        [
-            "systemd-run",
-            "--unit",
-            AP_TEST_RUNTIME_UNIT,
-            "--description",
-            "SmartCane AP test runtime",
-            "--property",
-            f"WorkingDirectory={RUNTIME_DIR}",
-            "--setenv",
-            "PYTHONUNBUFFERED=1",
-            sys.executable,
-            str(Path(__file__).resolve()),
-            "--wait-for-network",
-            str(wait_seconds),
-        ],
-        check=True,
-    )
-
-
 def main() -> None:
     if len(sys.argv) > 1:
         arg = sys.argv[1]
-        if arg == "--setup":
+        if arg in ("--setup", "--setup-hotspot"):
             if os.geteuid() != 0:
-                print("ERROR: --setup requires root. Run: sudo python src/main.py --setup")
+                print(f"ERROR: {arg} requires root. Run: sudo python src/main.py {arg}")
                 sys.exit(1)
             configure_logging()
             logger.info("Running hotspot client setup...")
             success = setup_hotspot_client(do_install=True)
             sys.exit(0 if success else 1)
-        elif arg == "--setup-hotspot":
-            if os.geteuid() != 0:
-                print("ERROR: --setup-hotspot requires root. Run: sudo python src/main.py --setup-hotspot")
-                sys.exit(1)
-            configure_logging()
-            logger.info("Running hotspot client setup...")
-            success = setup_hotspot_client(do_install=True)
-            sys.exit(0 if success else 1)
-        elif arg == "--ap-test":
-            if os.geteuid() != 0:
-                print("ERROR: --ap-test requires root. Run: sudo python src/main.py --ap-test [seconds]")
-                sys.exit(1)
-
-            rollback_seconds = sys.argv[2] if len(sys.argv) > 2 else "300"
-            if not runtime_service_installed():
-                arm_ap_test_runtime(wait_seconds=90)
-            sys.exit(run_network_script("ap-test", "--rollback", rollback_seconds))
-        elif arg == "--confirm-ap-test":
-            if os.geteuid() != 0:
-                print("ERROR: --confirm-ap-test requires root. Run: sudo python src/main.py --confirm-ap-test")
-                sys.exit(1)
-            sys.exit(run_network_script("confirm-test"))
-        elif arg == "--rollback-ap-test":
-            if os.geteuid() != 0:
-                print("ERROR: --rollback-ap-test requires root. Run: sudo python src/main.py --rollback-ap-test")
-                sys.exit(1)
-            sys.exit(run_network_script("rollback-now"))
         elif arg == "--wait-for-network":
             timeout_seconds = int(sys.argv[2]) if len(sys.argv) > 2 else 60
             if not wait_for_network(timeout_seconds):
@@ -437,21 +358,18 @@ def main() -> None:
         elif arg == "--status":
             print_status()
         elif arg == "--help":
-            print("Usage: python src/main.py [--setup|--setup-hotspot|--ap-test [seconds]|--confirm-ap-test|--rollback-ap-test|--status|--help]")
-            print("  No args: Start runtime (auto-imports hotspot credentials from /boot if available)")
-            print("  --setup: Configure hotspot client mode (includes package install)")
-            print("  --setup-hotspot: Alias for --setup")
-            print("  --ap-test [seconds]: Legacy Pi AP test mode with timed rollback for headless testing")
-            print("  --confirm-ap-test: Cancel the pending AP rollback and keep AP mode")
-            print("  --rollback-ap-test: Restore the previous client Wi-Fi immediately")
-            print("  --wait-for-network [seconds]: Wait for hotspot-client readiness, then start runtime")
-            print("  --status: Print network status")
+            print("Usage: python src/main.py [--setup|--setup-hotspot|--wait-for-network [seconds]|--status|--help]")
+            print("  No args:               Start runtime (auto-imports hotspot credentials from /boot if available)")
+            print("  --setup:               Configure hotspot client (includes package install)")
+            print("  --setup-hotspot:       Alias for --setup")
+            print("  --wait-for-network N:  Wait up to N seconds for hotspot-client readiness")
+            print("  --status:              Print network status and exit")
             sys.exit(0)
         else:
             print(f"Unknown argument: {arg}")
             print("Run: python src/main.py --help")
             sys.exit(1)
-    
+
     asyncio.run(run_server())
 
 

@@ -56,50 +56,104 @@ check_interface() {
     fi
 }
 
-check_ap_ip() {
-    if ip addr show "$WLAN" | grep -q "192.168.4.1"; then
-        pass "$WLAN has AP IP 192.168.4.1"
-    else
-        fail "$WLAN missing AP IP"
-        return 1
-    fi
-}
-
-check_hostapd_conf() {
-    if [[ -f /etc/hostapd/hostapd.conf ]]; then
+check_nm_wifi_connected() {
+    local device_state
+    device_state=$(nmcli -t -f DEVICE,STATE device status 2>/dev/null \
+        | grep "^${WLAN}:" | cut -d: -f2 || echo "unknown")
+    if [[ "$device_state" == "connected" ]]; then
         local ssid
-        ssid=$(grep "^ssid=" /etc/hostapd/hostapd.conf 2>/dev/null | cut -d= -f2)
-        pass "hostapd.conf exists (SSID: $ssid)"
+        ssid=$(nmcli -t -f ACTIVE,SSID dev wifi 2>/dev/null \
+            | grep '^yes:' | cut -d: -f2 || echo "")
+        pass "NetworkManager: $WLAN connected (SSID: ${ssid:-unknown})"
     else
-        fail "hostapd.conf missing"
+        fail "NetworkManager: $WLAN not connected (state: $device_state)"
         return 1
     fi
 }
 
-check_dnsmasq_conf() {
-    if [[ -f /etc/dnsmasq.conf ]]; then
-        if grep -q "dhcp-range=192.168.4" /etc/dnsmasq.conf 2>/dev/null; then
-            pass "dnsmasq.conf has DHCP range"
-        else
-            warn "dnsmasq.conf missing DHCP range"
+check_ip_address() {
+    local ip
+    ip=$(ip -4 addr show "$WLAN" 2>/dev/null \
+        | awk '/inet / {split($2,a,"/"); print a[1]}' | head -1)
+    if [[ -n "$ip" ]]; then
+        pass "$WLAN has IP $ip"
+    else
+        fail "$WLAN has no IPv4 address"
+        return 1
+    fi
+}
+
+check_hotspot_config() {
+    local found=0
+    for path in /etc/smartcane/hotspot.json /boot/firmware/smartcane-hotspot.json /boot/smartcane-hotspot.json; do
+        if [[ -f "$path" ]]; then
+            local ssid
+            ssid=$(python3 -c "import json,sys; d=json.load(open('$path')); \
+                nets=d.get('networks'); \
+                print(nets[0]['ssid'] if nets else d.get('hotspotSSID','?'))" 2>/dev/null || echo "?")
+            pass "Hotspot config found at $path (primary SSID: $ssid)"
+            found=1
+            break
         fi
-    else
-        fail "dnsmasq.conf missing"
-        return 1
+    done
+    if [[ $found -eq 0 ]]; then
+        warn "No hotspot config found — provision via BLE or place smartcane-hotspot.json on boot partition"
     fi
 }
 
-check_python_venv() {
-    local venv="${SCRIPT_DIR}/../../runtime/.venv"
+check_nm_connections() {
+    local conns
+    conns=$(nmcli -t -f NAME connection show 2>/dev/null | grep '^smartcane-wifi-' | tr '\n' ' ')
+    if [[ -n "$conns" ]]; then
+        pass "NM smartcane connections: $conns"
+    else
+        warn "No smartcane-wifi-* NM connections found — hotspot not yet provisioned"
+    fi
+}
+
+check_python_runtime() {
+    local repo_root
+    repo_root=$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)
+    local venv="${repo_root}/runtime/.venv"
+    local vendor="${repo_root}/runtime/vendor"
     if [[ -d "$venv" ]]; then
         pass "Python venv exists"
         if "$venv/bin/python" -c "import websockets" 2>/dev/null; then
-            pass "websockets module available"
+            pass "websockets importable from venv"
         else
-            fail "websockets module missing"
+            fail "websockets missing from venv"
+        fi
+    elif [[ -d "$vendor" ]]; then
+        pass "Python vendor dir exists (OTA mode)"
+        if PYTHONPATH="$vendor" python3 -c "import websockets" 2>/dev/null; then
+            pass "websockets importable from vendor"
+        else
+            fail "websockets missing from vendor"
         fi
     else
-        fail "Python venv missing"
+        fail "Neither venv nor vendor dir found"
+    fi
+}
+
+check_rfkill() {
+    local state
+    state=$(rfkill list wifi 2>/dev/null \
+        | grep -o "Soft blocked: \(yes\|no\)" | head -1 | cut -d: -f2 | tr -d ' ')
+    if [[ "$state" == "no" ]]; then
+        pass "WiFi not soft-blocked"
+    else
+        fail "WiFi soft-blocked — run: rfkill unblock wifi"
+        return 1
+    fi
+}
+
+check_mode_file() {
+    if [[ -f /etc/smartcane/network_mode ]]; then
+        pass "Network mode file exists"
+        info "Contents:"
+        sed 's/^/  /' /etc/smartcane/network_mode
+    else
+        warn "Network mode file missing (not yet provisioned)"
     fi
 }
 
@@ -112,96 +166,68 @@ check_port() {
     fi
 }
 
-check_rfkill() {
-    local state
-    state=$(rfkill list wifi 2>/dev/null | grep -o "Soft blocked: \(yes\|no\)" | head -1 | cut -d: -f2 | tr -d ' ')
-    if [[ "$state" == "no" ]]; then
-        pass "WiFi not soft-blocked"
-    else
-        fail "WiFi soft-blocked: rfkill unblock wifi"
-        return 1
-    fi
-}
-
-check_mode_file() {
-    if [[ -f /etc/smartcane/network_mode ]]; then
-        pass "Network mode file exists"
-        info "Contents:"
-        cat /etc/smartcane/network_mode | sed 's/^/  /'
-    else
-        warn "Network mode file missing"
-    fi
-}
-
 quick_fix() {
     info "Attempting quick fixes..."
-    
+
     rfkill unblock wifi 2>/dev/null || true
-    
-    if systemctl is-failed hostapd &>/dev/null; then
-        warn "hostapd failed, restarting..."
-        systemctl restart hostapd || true
+
+    if ! systemctl is-active --quiet NetworkManager; then
+        warn "NetworkManager not running, starting..."
+        systemctl start NetworkManager || true
     fi
-    
-    if systemctl is-failed dnsmasq &>/dev/null; then
-        warn "dnsmasq failed, restarting..."
-        systemctl restart dnsmasq || true
+
+    if ! systemctl is-active --quiet avahi-daemon; then
+        warn "avahi-daemon not running, starting..."
+        systemctl start avahi-daemon || true
     fi
-    
+
     if systemctl is-failed smartcane-runtime &>/dev/null; then
         warn "smartcane-runtime failed, restarting..."
         systemctl restart smartcane-runtime || true
     fi
 }
 
-print_summary() {
-    echo
-    echo "=========================================="
-    echo "SmartCane Network Diagnostics"
-    echo "=========================================="
-}
-
-print_summary
+echo "=========================================="
+echo "SmartCane Network Diagnostics"
+echo "=========================================="
+echo
 
 info "Checking packages..."
-check_package hostapd
-check_package dnsmasq
+check_package network-manager
+check_package avahi-daemon
 check_package iw
-
 echo
+
 info "Checking services..."
-check_service hostapd
-check_service dnsmasq
-check_service dhcpcd
+check_service NetworkManager
+check_service avahi-daemon
 check_service smartcane-runtime
-check_service_enabled smartcane-network-bootstrap
 check_service_enabled smartcane-runtime
-
 echo
-info "Checking network..."
+
+info "Checking Wi-Fi..."
 check_interface
-check_ap_ip
 check_rfkill
-
+check_nm_wifi_connected
+check_ip_address
 echo
-info "Checking config files..."
-check_hostapd_conf
-check_dnsmasq_conf
+
+info "Checking hotspot configuration..."
+check_hotspot_config
+check_nm_connections
 check_mode_file
-
 echo
-info "Checking Python..."
-check_python_venv
 
+info "Checking Python runtime..."
+check_python_runtime
 echo
+
 info "Checking ports..."
 check_port 8080
-check_port 53
-check_port 67
-
 echo
-info "Recent logs (last 5 lines):"
-journalctl -u smartcane-runtime -u hostapd -u dnsmasq --no-pager -n 5 2>/dev/null | sed 's/^/  /'
+
+info "Recent logs (last 10 lines):"
+journalctl -u smartcane-runtime -u NetworkManager --no-pager -n 10 2>/dev/null | sed 's/^/  /'
 
 echo
 read -p "Run quick fixes? [y/N] " -n 1 -r

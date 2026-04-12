@@ -27,7 +27,7 @@ install_packages() {
     log "Installing required packages (this may take a few minutes)..."
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
-    apt-get install -y -qq curl git iw rfkill iproute2 dhcpcd5 wpasupplicant bluez openssh-server python3-venv i2c-tools python3-picamera2
+    apt-get install -y -qq curl git iw rfkill iproute2 network-manager avahi-daemon libnss-mdns bluez openssh-server python3-venv i2c-tools python3-picamera2
 }
 
 find_boot_config() {
@@ -88,13 +88,11 @@ install_services() {
         fi
     fi
 
-    chmod +x "${SCRIPT_DIR}/smartcane_network.sh"
     chmod +x "${SCRIPT_DIR}/ota_update.sh"
     chmod +x "${SCRIPT_DIR}/generate_cloud_init.sh"
     chmod +x "${SCRIPT_DIR}/run_pi_runtime.sh"
     chmod +x "${SCRIPT_DIR}/diagnose.sh"
     chmod +x "${SCRIPT_DIR}/test_connection.sh"
-    chmod +x "${SCRIPT_DIR}/reset_network.sh"
     
     sed "s|__SMARTCANE_REPO_ROOT__|${REPO_ROOT}|g" \
         "${SCRIPT_DIR}/systemd/smartcane-runtime.service" \
@@ -114,12 +112,6 @@ SMARTCANE_OTA_MANIFEST_URL=${ota_manifest_url}
 EOF
     chmod 644 /etc/default/smartcane-ota
     
-    cat > /etc/sudoers.d/smartcane-runtime <<EOF
-pi ALL=(root) NOPASSWD: ${SCRIPT_DIR}/smartcane_network.sh
-pi ALL=(root) NOPASSWD: ${SCRIPT_DIR}/reset_network.sh
-EOF
-    chmod 440 /etc/sudoers.d/smartcane-runtime
-    
     systemctl daemon-reload
     systemctl enable smartcane-runtime.service
     systemctl enable smartcane-ota.timer
@@ -129,6 +121,10 @@ start_service() {
     log "Starting SmartCane service..."
     systemctl enable bluetooth
     systemctl restart bluetooth || true
+    systemctl enable NetworkManager
+    systemctl start NetworkManager || true
+    systemctl enable avahi-daemon
+    systemctl start avahi-daemon || true
     systemctl enable ssh || true
     systemctl restart ssh || true
     systemctl start smartcane-runtime.service

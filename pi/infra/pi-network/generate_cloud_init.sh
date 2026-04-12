@@ -13,6 +13,7 @@ HOSTNAME="smartcane-pi"
 PI_USERNAME="pi"
 SSH_PASSWORD=""
 WHEELHOUSE=""
+PI_PYTHON_VERSION="${SMARTCANE_PI_PYTHON_VERSION:-313}"
 MODE="offline"
 PAYLOAD_DIR_NAME="smartcane"
 HOTSPOT_SSID=""
@@ -25,8 +26,9 @@ TOOL_PACKAGES=(
   i2c-tools
   rfkill
   iproute2
-  dhcpcd5
-  wpasupplicant
+  network-manager
+  avahi-daemon
+  libnss-mdns
   bluez
   python3-picamera2
   python3-venv
@@ -36,6 +38,10 @@ usage() {
   cat <<EOF
 Usage:
   $0 --boot /path/to/boot [--mode offline|online] [--source-repo /path/to/REDesign/pi] [--repo-on-pi /home/pi/smartcane-pi] [--hostname smartcane-pi] [--repo-url https://github.com/owner/repo.git] [--repo-branch main] [--wheelhouse /path/to/wheelhouse] [--ota-manifest-url https://.../smartcane-pi-manifest.json] [--ssh-password "secret"] [--hotspot-ssid "iPhone"] [--hotspot-password "secret"]
+
+Idempotent: if repo.tar.gz and python-vendor.tar.gz already exist on the boot
+partition, only config files are regenerated (network-config, user-data,
+meta-data, smartcane-hotspot.json). Re-running is safe.
 
 Writes Raspberry Pi OS cloud-init files:
   - meta-data
@@ -138,9 +144,15 @@ prepare_wheelhouse() {
 
   local generated_wheelhouse
   generated_wheelhouse=$(mktemp -d "${TMPDIR:-/tmp}/smartcane-wheelhouse.XXXXXX")
+  # Redirect pip output to stderr so only the path is captured by the caller.
+  # Use manylinux_2_17_aarch64 so packages like Pillow (manylinux wheels) are matched.
   if ! python3 -m pip download --disable-pip-version-check --only-binary=:all: \
+    --platform manylinux_2_17_aarch64 \
+    --python-version "${PI_PYTHON_VERSION}" \
+    --implementation cp \
+    --abi "cp${PI_PYTHON_VERSION}" \
     --dest "${generated_wheelhouse}" \
-    -r "${SOURCE_REPO}/runtime/requirements.txt"; then
+    -r "${SOURCE_REPO}/runtime/requirements.txt" >&2; then
     rm -rf "${generated_wheelhouse}"
     fail "Failed to build offline wheelhouse. Re-run with internet access on this machine or provide --wheelhouse."
   fi
@@ -219,6 +231,10 @@ while [[ $# -gt 0 ]]; do
       WHEELHOUSE="$2"
       shift 2
       ;;
+    --pi-python-version)
+      PI_PYTHON_VERSION="$2"
+      shift 2
+      ;;
     --ota-manifest-url)
       OTA_MANIFEST_URL="$2"
       shift 2
@@ -247,19 +263,29 @@ done
 
 [[ -n "${BOOT_DIR}" ]] || fail "--boot is required"
 [[ -d "${BOOT_DIR}" ]] || fail "Boot directory does not exist: ${BOOT_DIR}"
-[[ -d "${SOURCE_REPO}" ]] || fail "Source repo does not exist: ${SOURCE_REPO}"
-[[ -f "${SOURCE_REPO}/runtime/requirements.txt" ]] || fail "Source repo does not contain runtime/requirements.txt: ${SOURCE_REPO}"
-[[ "${MODE}" == "offline" || "${MODE}" == "online" ]] || fail "--mode must be offline or online"
 if [[ -n "${HOTSPOT_SSID}" || -n "${HOTSPOT_PASSWORD}" ]]; then
   [[ -n "${HOTSPOT_SSID}" && -n "${HOTSPOT_PASSWORD}" ]] || fail "Both --hotspot-ssid and --hotspot-password are required together"
 fi
+
+# Detect if archives already exist on the boot partition (idempotent re-run).
+_payload_dir="${BOOT_DIR}/${PAYLOAD_DIR_NAME}"
+_archives_exist=0
+if [[ -f "${_payload_dir}/repo.tar.gz" && -f "${_payload_dir}/python-vendor.tar.gz" ]]; then
+  _archives_exist=1
+fi
+
+if [[ ${_archives_exist} -eq 0 ]]; then
+  [[ -d "${SOURCE_REPO}" ]] || fail "Source repo does not exist: ${SOURCE_REPO}"
+  [[ -f "${SOURCE_REPO}/runtime/requirements.txt" ]] || fail "Source repo does not contain runtime/requirements.txt: ${SOURCE_REPO}"
+fi
+[[ "${MODE}" == "offline" || "${MODE}" == "online" ]] || fail "--mode must be offline or online"
 if [[ "${MODE}" == "online" ]]; then
   [[ -n "${REPO_URL}" ]] || fail "--repo-url is required in online mode"
 fi
 if [[ -z "${OTA_MANIFEST_URL}" ]]; then
   if [[ -n "${REPO_URL}" ]]; then
     OTA_MANIFEST_URL=$(derive_manifest_url_from_repo_url "${REPO_URL}" || true)
-  else
+  elif [[ -d "${SOURCE_REPO}" ]]; then
     origin_url=$(git -C "${SOURCE_REPO}" config --get remote.origin.url 2>/dev/null || true)
     if [[ -n "${origin_url}" ]]; then
       OTA_MANIFEST_URL=$(derive_manifest_url_from_repo_url "${origin_url}" || true)
@@ -291,10 +317,39 @@ instance-id: ${HOSTNAME}
 local-hostname: ${HOSTNAME}
 EOF
 
-cat > "${BOOT_DIR}/network-config" <<EOF
+if [[ -n "${HOTSPOT_SSID}" ]]; then
+  # Embed credentials directly in network-config so NM connects on first boot
+  # before the Python runtime even starts — no chicken-and-egg problem.
+  python3 - "${BOOT_DIR}/network-config" "${HOTSPOT_SSID}" "${HOTSPOT_PASSWORD}" <<'PY'
+import sys
+import json
+
+output_path, ssid, password = sys.argv[1:]
+
+# Use json.dumps for safe string quoting inside YAML double-quoted scalars.
+ssid_q = json.dumps(ssid)
+pass_q = json.dumps(password)
+
+content = f"""\
+version: 2
+renderer: NetworkManager
+wifis:
+  wlan0:
+    dhcp4: true
+    optional: true
+    access-points:
+      {ssid_q}:
+        password: {pass_q}
+"""
+with open(output_path, "w") as f:
+    f.write(content)
+PY
+else
+  cat > "${BOOT_DIR}/network-config" <<EOF
 version: 2
 renderer: NetworkManager
 EOF
+fi
 
 if [[ -n "${HOTSPOT_SSID}" ]]; then
   cat > "${BOOT_DIR}/smartcane-hotspot.json" <<EOF
@@ -320,17 +375,26 @@ if [[ "${MODE}" == "offline" ]]; then
 
   repo_archive="${payload_dir}/repo.tar.gz"
   vendor_archive="${payload_dir}/python-vendor.tar.gz"
-  repo_dir_name=$(basename "${REPO_ON_PI}")
-  build_repo_archive "${SOURCE_REPO}" "${repo_archive}" "${repo_dir_name}"
 
-  wheelhouse_dir=$(prepare_wheelhouse)
-  cleanup_wheelhouse=0
-  if [[ "${wheelhouse_dir}" != "${WHEELHOUSE}" ]]; then
-    cleanup_wheelhouse=1
+  if [[ -f "${repo_archive}" ]]; then
+    echo "[SmartCane] repo.tar.gz already exists — skipping repo archive build"
+  else
+    repo_dir_name=$(basename "${REPO_ON_PI}")
+    build_repo_archive "${SOURCE_REPO}" "${repo_archive}" "${repo_dir_name}"
   fi
-  build_vendor_archive "${wheelhouse_dir}" "${vendor_archive}"
-  if [[ ${cleanup_wheelhouse} -eq 1 ]]; then
-    rm -rf "${wheelhouse_dir}"
+
+  if [[ -f "${vendor_archive}" ]]; then
+    echo "[SmartCane] python-vendor.tar.gz already exists — skipping wheel download"
+  else
+    wheelhouse_dir=$(prepare_wheelhouse)
+    cleanup_wheelhouse=0
+    if [[ "${wheelhouse_dir}" != "${WHEELHOUSE}" ]]; then
+      cleanup_wheelhouse=1
+    fi
+    build_vendor_archive "${wheelhouse_dir}" "${vendor_archive}"
+    if [[ ${cleanup_wheelhouse} -eq 1 ]]; then
+      rm -rf "${wheelhouse_dir}"
+    fi
   fi
 
   firstboot_script=$(cat <<EOF
@@ -379,6 +443,10 @@ fi
 
 systemctl enable bluetooth || true
 systemctl restart bluetooth || true
+systemctl enable NetworkManager || true
+systemctl start NetworkManager || true
+systemctl enable avahi-daemon || true
+systemctl start avahi-daemon || true
 systemctl daemon-reload
 systemctl enable smartcane-runtime.service
 systemctl enable smartcane-ota.timer || true
@@ -438,8 +506,9 @@ packages:
   - iw
   - rfkill
   - iproute2
-  - dhcpcd5
-  - wpasupplicant
+  - network-manager
+  - avahi-daemon
+  - libnss-mdns
   - bluez
   - python3-venv
 users:
@@ -469,6 +538,10 @@ $(printf '%s\n' "${ota_timer}" | sed 's/^/        /')
 runcmd:
   - systemctl enable bluetooth
   - systemctl restart bluetooth || true
+  - systemctl enable NetworkManager
+  - systemctl start NetworkManager || true
+  - systemctl enable avahi-daemon
+  - systemctl start avahi-daemon || true
   - test -d ${REPO_ON_PI}/.git || git clone --branch ${REPO_BRANCH} ${REPO_URL} ${REPO_ON_PI}
   - python3 -m venv ${REPO_ON_PI}/runtime/.venv
   - ${REPO_ON_PI}/runtime/.venv/bin/pip install --upgrade pip

@@ -10,15 +10,14 @@ from diagnostics_state import diagnostics_state
 logger = logging.getLogger(__name__)
 
 WLAN_IFACE = os.getenv("WLAN_IFACE", "wlan0")
-DHCPCD_CONF = "/etc/dhcpcd.conf"
 MODE_FILE = "/etc/smartcane/network_mode"
-WPA_SUPPLICANT_CONF = "/etc/wpa_supplicant/wpa_supplicant.conf"
 HOTSPOT_CONFIG_PATH = Path("/etc/smartcane/hotspot.json")
 BOOT_CONFIG_CANDIDATES = [
     Path("/boot/firmware/smartcane-hotspot.json"),
     Path("/boot/smartcane-hotspot.json"),
 ]
-PACKAGE_NAMES = ["iw", "rfkill", "iproute2", "dhcpcd5", "wpasupplicant", "bluez"]
+PACKAGE_NAMES = ["iw", "rfkill", "iproute2", "network-manager", "bluez"]
+_NM_CONN_PREFIX = "smartcane-wifi-"
 
 
 def _log_diagnostic(message: str) -> None:
@@ -98,7 +97,13 @@ def normalize_hotspot_payload(payload: dict[str, object], source_hint: str) -> d
 
 
 def run_cmd(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, check=check, capture_output=True, text=True)
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if check and result.returncode != 0:
+        logger.error("Command failed %s: %s", cmd, result.stderr.strip())
+        raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
+    if result.returncode != 0:
+        logger.debug("Command %s exited %d: %s", cmd, result.returncode, result.stderr.strip())
+    return result
 
 
 def is_root() -> bool:
@@ -115,15 +120,15 @@ def check_package(pkg: str) -> bool:
 
 def install_packages() -> bool:
     missing = [p for p in PACKAGE_NAMES if not check_package(p)]
-    
+
     if not missing:
         logger.info("All required packages installed")
         return True
-    
+
     if not is_root():
         logger.warning("Missing packages %s - need root to install", missing)
         return False
-    
+
     logger.info("Installing packages: %s (this may take a few minutes)", missing)
     try:
         run_cmd(["apt-get", "update", "-qq"])
@@ -150,10 +155,15 @@ def get_ipv4_address(interface: str) -> str | None:
 
 def get_connected_ssid() -> str:
     try:
-        result = run_cmd(["iwgetid", "-r"], check=False)
-        if result.returncode != 0:
-            return ""
-        return result.stdout.strip()
+        result = run_cmd(
+            ["nmcli", "-t", "-f", "ACTIVE,SSID", "dev", "wifi"],
+            check=False,
+        )
+        for line in result.stdout.splitlines():
+            active, _, ssid = line.partition(":")
+            if active == "yes":
+                return ssid
+        return ""
     except Exception:
         return ""
 
@@ -166,81 +176,48 @@ def stop_services() -> None:
 
 def reset_interface() -> None:
     run_cmd(["rfkill", "unblock", "wifi"], check=False)
-    run_cmd(["ip", "link", "set", WLAN_IFACE, "down"], check=False)
-    run_cmd(["ip", "addr", "flush", "dev", WLAN_IFACE], check=False)
-    run_cmd(["ip", "link", "set", WLAN_IFACE, "up"], check=False)
+    run_cmd(["nmcli", "radio", "wifi", "on"], check=False)
     run_cmd(["iw", "dev", WLAN_IFACE, "set", "power_save", "off"], check=False)
 
 
-def remove_ap_dhcpcd_block() -> None:
-    marker = "# smartcane-ap"
-    content = Path(DHCPCD_CONF).read_text() if Path(DHCPCD_CONF).exists() else ""
-    lines = content.splitlines()
-    filtered: list[str] = []
-    skipping = False
-    for line in lines:
-        if line == marker:
-            skipping = True
-            continue
-        if skipping:
-            if line.strip() == "":
-                skipping = False
-            continue
-        filtered.append(line)
-    Path(DHCPCD_CONF).write_text("\n".join(filtered).rstrip() + "\n")
+def configure_nm_connections(networks: list[dict[str, str]]) -> None:
+    # Remove previously managed connections so stale credentials don't linger.
+    result = run_cmd(["nmcli", "-t", "-f", "NAME", "connection", "show"], check=False)
+    for name in result.stdout.splitlines():
+        name = name.strip()
+        if name.startswith(_NM_CONN_PREFIX):
+            run_cmd(["nmcli", "connection", "delete", name], check=False)
 
-
-def write_mode_file(mode: str, extra: dict[str, str] | None = None) -> None:
-    Path("/etc/smartcane").mkdir(exist_ok=True)
-    lines = [f"SMARTCANE_NETWORK_MODE={mode}"]
-    for key, value in (extra or {}).items():
-        lines.append(f"{key}={value}")
-    Path(MODE_FILE).write_text("\n".join(lines) + "\n")
-
-
-def write_wpa_supplicant_conf(networks: list[dict[str, str]]) -> None:
-    Path(WPA_SUPPLICANT_CONF).parent.mkdir(parents=True, exist_ok=True)
-    network_blocks: list[str] = []
-    priority = len(networks) + 9
-    for network in networks:
-        network_blocks.append(
-            f"""network={{
-    ssid="{network["ssid"]}"
-    psk="{network["password"]}"
-    key_mgmt=WPA-PSK
-    scan_ssid=1
-    priority={priority}
-}}
-"""
-        )
-        priority -= 1
-
-    conf = f"""ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=SG
-
-{''.join(network_blocks)}"""
-    Path(WPA_SUPPLICANT_CONF).write_text(conf)
-    os.chmod(WPA_SUPPLICANT_CONF, 0o600)
+    for i, network in enumerate(networks):
+        result = run_cmd([
+            "nmcli", "connection", "add",
+            "type", "wifi",
+            "ifname", WLAN_IFACE,
+            "con-name", f"{_NM_CONN_PREFIX}{i}",
+            "ssid", network["ssid"],
+            "wifi-sec.key-mgmt", "wpa-psk",
+            "wifi-sec.psk", network["password"],
+            "connection.autoconnect", "yes",
+            "connection.autoconnect-priority", str(100 - i),
+            # 0 = unlimited retries so NM never permanently gives up on this profile.
+            "connection.autoconnect-retries", "0",
+        ], check=False)
+        if result.returncode == 0:
+            logger.info("Created NM connection %s%d for SSID %s", _NM_CONN_PREFIX, i, network["ssid"])
+        else:
+            logger.error("Failed to create NM connection for SSID %s: %s", network["ssid"], result.stderr.strip())
 
 
 def start_hotspot_client() -> None:
-    _log_diagnostic("Starting hotspot client services")
-    run_cmd(["systemctl", "stop", "dnsmasq"], check=False)
-    run_cmd(["systemctl", "stop", "hostapd"], check=False)
-    run_cmd(["systemctl", "disable", "dnsmasq"], check=False)
-    run_cmd(["systemctl", "disable", "hostapd"], check=False)
-    run_cmd(["systemctl", "enable", "dhcpcd"], check=False)
-    run_cmd(["systemctl", "enable", "wpa_supplicant"], check=False)
-    run_cmd(["systemctl", "enable", f"wpa_supplicant@{WLAN_IFACE}"], check=False)
-
-    _log_diagnostic("Restarting dhcpcd")
-    run_cmd(["systemctl", "restart", "dhcpcd"], check=False)
-    time.sleep(2)
-
-    _log_diagnostic("Restarting wpa_supplicant")
-    run_cmd(["systemctl", "restart", "wpa_supplicant"], check=False)
-    run_cmd(["systemctl", "restart", f"wpa_supplicant@{WLAN_IFACE}"], check=False)
+    _log_diagnostic("Activating Wi-Fi via NetworkManager")
+    run_cmd(["systemctl", "start", "NetworkManager"], check=False)
+    run_cmd(["nmcli", "radio", "wifi", "on"], check=False)
+    # Kick off a scan so NM finds the SSID sooner — but do NOT call
+    # `nmcli connection up` here. Forcing activation before the scan
+    # completes causes NM to record a failed attempt; after a few failures
+    # NM stops autoconnecting the profile entirely. Let NM's own autoconnect
+    # logic handle the connection once the scan result is ready.
+    run_cmd(["nmcli", "device", "wifi", "rescan"], check=False)
 
 
 def import_boot_hotspot_config() -> dict[str, object] | None:
@@ -359,11 +336,18 @@ def is_hotspot_client_active() -> bool:
     ip_address = get_ipv4_address(WLAN_IFACE)
     if not ip_address:
         return False
-    result = run_cmd(["systemctl", "is-active", f"wpa_supplicant@{WLAN_IFACE}"], check=False)
-    if result.returncode == 0:
-        return True
-    result = run_cmd(["systemctl", "is-active", "wpa_supplicant"], check=False)
-    return result.returncode == 0
+    try:
+        result = run_cmd(
+            ["nmcli", "-t", "-f", "DEVICE,STATE", "device", "status"],
+            check=False,
+        )
+        for line in result.stdout.splitlines():
+            device, _, state = line.partition(":")
+            if device == WLAN_IFACE and state == "connected":
+                return True
+    except Exception:
+        pass
+    return False
 
 
 def setup_hotspot_client(do_install: bool = False) -> bool:
@@ -386,8 +370,7 @@ def setup_hotspot_client(do_install: bool = False) -> bool:
     stop_services()
     reset_interface()
 
-    remove_ap_dhcpcd_block()
-    write_wpa_supplicant_conf(networks)
+    configure_nm_connections(networks)
     write_mode_file(
         "PHONE_HOTSPOT_CLIENT",
         {
@@ -407,7 +390,7 @@ def setup_hotspot_client(do_install: bool = False) -> bool:
     )
     start_hotspot_client()
 
-    for _ in range(20):
+    for _ in range(60):
         ip_address = get_ipv4_address(WLAN_IFACE)
         connected_ssid = get_connected_ssid()
         if is_hotspot_client_active() and ip_address and connected_ssid:
@@ -428,7 +411,7 @@ def setup_hotspot_client(do_install: bool = False) -> bool:
         time.sleep(1)
 
     connected_ssid = get_connected_ssid()
-    failure_reason = "wpa_supplicant active without DHCP lease" if connected_ssid else "no configured network associated"
+    failure_reason = "associated but no DHCP lease" if connected_ssid else "no configured network in range or wrong credentials"
     diagnostics_state.add_message(f"Hotspot join failed: {failure_reason}")
     save_hotspot_config(
         primary_ssid=networks[0]["ssid"],
@@ -443,6 +426,14 @@ def setup_hotspot_client(do_install: bool = False) -> bool:
     )
     logger.error("Hotspot client setup failed for networks=%s", ssid_list)
     return False
+
+
+def _nm_connections_configured() -> bool:
+    result = run_cmd(["nmcli", "-t", "-f", "NAME", "connection", "show"], check=False)
+    return any(
+        name.strip().startswith(_NM_CONN_PREFIX)
+        for name in result.stdout.splitlines()
+    )
 
 
 def ensure_network(do_install: bool = False) -> bool:
@@ -461,8 +452,21 @@ def ensure_network(do_install: bool = False) -> bool:
         logger.info("Run: sudo python src/main.py --setup-hotspot")
         return False
 
-    logger.info("Hotspot client not active, setting up...")
+    # Only configure NM once. If profiles already exist NM is handling autoconnect —
+    # deleting and re-adding them every few seconds would cancel any in-progress attempt.
+    if _nm_connections_configured():
+        return False
+
+    logger.info("No NM connections configured yet, running initial hotspot setup...")
     return setup_hotspot_client(do_install)
+
+
+def write_mode_file(mode: str, extra: dict[str, str] | None = None) -> None:
+    Path("/etc/smartcane").mkdir(exist_ok=True)
+    lines = [f"SMARTCANE_NETWORK_MODE={mode}"]
+    for key, value in (extra or {}).items():
+        lines.append(f"{key}={value}")
+    Path(MODE_FILE).write_text("\n".join(lines) + "\n")
 
 
 def get_status() -> dict:
@@ -488,13 +492,17 @@ def get_status() -> dict:
         "is_root": is_root(),
         "packages_installed": not missing_packages,
         "missing_packages": missing_packages,
-        "wpa_supplicant_active": False,
+        "nm_active": False,
         "client_active": client_active,
     }
 
     try:
-        result = run_cmd(["systemctl", "is-active", f"wpa_supplicant@{WLAN_IFACE}"], check=False)
-        status["wpa_supplicant_active"] = result.returncode == 0
+        result = run_cmd(["nmcli", "-t", "-f", "DEVICE,STATE", "device", "status"], check=False)
+        for line in result.stdout.splitlines():
+            device, _, state = line.partition(":")
+            if device == WLAN_IFACE:
+                status["nm_active"] = state == "connected"
+                break
     except Exception:
         pass
 

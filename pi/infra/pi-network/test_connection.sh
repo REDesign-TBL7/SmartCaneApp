@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PI_IP="${PI_IP:-192.168.4.1}"
+# PI_IP can be set explicitly. Falls back to mDNS hostname (works once the Pi
+# is on the same network as the test machine via the phone hotspot).
+PI_IP="${PI_IP:-smartcane-pi.local}"
 WS_PORT="${WS_PORT:-8080}"
 
 log() { echo "[Test] $*"; }
 
 log "Testing connectivity to SmartCane Pi at ${PI_IP}:${WS_PORT}"
+log "(Set PI_IP=<address> to override)"
 
 log "1. Ping test..."
 if ping -c 1 -W 2 "${PI_IP}" &>/dev/null; then
     log "PING OK"
 else
-    log "PING FAILED - check phone is connected to SmartCane WiFi"
+    log "PING FAILED - check Pi is connected to the same hotspot as this machine"
     exit 1
 fi
 
