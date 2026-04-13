@@ -29,7 +29,8 @@ Baud:
 115200
 ```
 
-The sketch also exposes a direct fallback motor-control AP for bench testing:
+The sketch also exposes the same direct AP joystick controller as the reference
+test sketch for bench testing and demo fallback:
 
 ```text
 SSID: ESP32_OMNI_BOT
@@ -37,17 +38,15 @@ PASS: 12345678
 URL:  http://192.168.4.1
 ```
 
-That page exposes the same omni-drive joystick control logic used in the
-standalone test sketch, plus demo-backup controls:
+That page is intentionally kept aligned with the standalone reference sketch:
 
-- explicit `Arm backup override` latch
-- live control-source / wheel-mix / ultrasonic status
-- quick directional buttons for forward / left / right / stop
+- move joystick
+- rotate joystick
+- center
+- stop
 
-Control priority:
-
-- If backup override is armed, the web controller owns the motors until you release it.
-- Otherwise web commands temporarily override Pi serial commands for `300ms`, then control falls back to the latest Pi command automatically.
+Web or Pi serial input both feed the same underlying `vx / vy / wz` control
+targets and the same motor commutation loop.
 
 The ESP32 also owns the motor-unit IMU and the ultrasonic obstacle sensors used
 for the demo. It reports both back to the Pi over the same serial link:
