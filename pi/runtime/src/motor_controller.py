@@ -6,8 +6,9 @@ commands from the iPhone app over WebSocket, applies safety logic, then forwards
 LEFT / RIGHT / FORWARD / STOP to the ESP32 over serial.
 """
 
-import os
 import logging
+import os
+import time
 from dataclasses import dataclass
 
 try:
@@ -18,6 +19,7 @@ except ImportError:  # pragma: no cover - lets local dev run without pyserial
 
 VALID_COMMANDS = {"LEFT", "RIGHT", "FORWARD", "STOP"}
 DEFAULT_BAUD_RATE = 115200
+COMMAND_REFRESH_INTERVAL_SECONDS = 0.25
 DEFAULT_SERIAL_PORTS = (
     "/dev/serial0",
     "/dev/ttyUSB0",
@@ -55,6 +57,7 @@ class MotorController:
         self.serial_connection = None
         self.last_command = MotorCommand(command="STOP", sent_to_esp32=False)
         self.last_serial_line = "STOP"
+        self.last_command_sent_at = 0.0
         self.latest_motor_imu = MotorIMUTelemetry()
         self.latest_ultrasonic = UltrasonicTelemetry()
         self.status_message = "ESP32 motor serial link not connected"
@@ -68,9 +71,15 @@ class MotorController:
     def apply_discrete_command(self, cmd: str) -> MotorCommand:
         self.poll_motor_imu()
         command = self._normalize_command(cmd)
+        now = time.monotonic()
+        should_refresh = (now - self.last_command_sent_at) >= COMMAND_REFRESH_INTERVAL_SECONDS
 
-        # Avoid spamming the ESP32 every 0.2 seconds while the same command is active.
-        if command == self.last_command.command and self.last_command.sent_to_esp32 and self.last_serial_line == command:
+        if (
+            command == self.last_command.command
+            and self.last_command.sent_to_esp32
+            and self.last_serial_line == command
+            and not should_refresh
+        ):
             logger.debug("Skipping duplicate motor command %s", command)
             return self.last_command
 
@@ -144,6 +153,7 @@ class MotorController:
             self.serial_connection.flush()
             self.status_message = status_message
             self.last_serial_line = line
+            self.last_command_sent_at = time.monotonic()
             logger.info("%s", status_message)
             return True
         except serial.SerialException as error:

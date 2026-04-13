@@ -457,6 +457,7 @@ UltrasonicPins ultrasonicSensors[] = {
 static const size_t ULTRASONIC_SENSOR_COUNT = sizeof(ultrasonicSensors) / sizeof(ultrasonicSensors[0]);
 
 String serialLine = "";
+String usbSerialLine = "";
 float vx_cmd = 0.0f;
 float vy_cmd = 0.0f;
 float wz_cmd = 0.0f;
@@ -939,41 +940,62 @@ void sendUltrasonicTelemetry() {
   piSerial.println(nearestObstacleCm, 2);
 }
 
+void processIncomingCommandLine(String &buffer, char incoming, bool sendAckToPiLink) {
+  if (incoming == '\n' || incoming == '\r') {
+    if (buffer.length() == 0) {
+      return;
+    }
+
+    float vx = 0.0f;
+    float vy = 0.0f;
+    float wz = 0.0f;
+    bool rcOverride = webControlActive();
+    if (parseMotionCommand(buffer, vx, vy, wz)) {
+      if (!rcOverride) {
+        vx_cmd = vx;
+        vy_cmd = vy;
+        wz_cmd = wz;
+        lastCommandMs = millis();
+        activeCommandSource = SOURCE_PI_SERIAL;
+      }
+      if (sendAckToPiLink) {
+        piLinkPrintln(rcOverride ? "OK MOVE OVERRIDDEN_BY_WEB" : "OK MOVE");
+      } else {
+        Serial.println(rcOverride ? "OK MOVE OVERRIDDEN_BY_WEB" : "OK MOVE");
+      }
+    } else {
+      CaneCommand command = parseCommand(buffer);
+      if (!rcOverride) {
+        commandToTargets(command, vx_cmd, vy_cmd, wz_cmd);
+        lastCommandMs = millis();
+        activeCommandSource = SOURCE_PI_SERIAL;
+      }
+      if (sendAckToPiLink) {
+        piLinkPrint("OK ");
+        piLinkPrintln(rcOverride ? String(commandName(command)) + " OVERRIDDEN_BY_WEB" : commandName(command));
+      } else {
+        Serial.print("OK ");
+        Serial.println(rcOverride ? String(commandName(command)) + " OVERRIDDEN_BY_WEB" : commandName(command));
+      }
+    }
+    buffer = "";
+    return;
+  }
+
+  buffer += incoming;
+}
+
 void handleSerialInput() {
   while (piSerial.available() > 0) {
     char incoming = piSerial.read();
-    if (incoming == '\n' || incoming == '\r') {
-      if (serialLine.length() == 0) {
-        continue;
-      }
+    processIncomingCommandLine(serialLine, incoming, true);
+  }
+}
 
-      float vx = 0.0f;
-      float vy = 0.0f;
-      float wz = 0.0f;
-      bool rcOverride = webControlActive();
-      if (parseMotionCommand(serialLine, vx, vy, wz)) {
-        if (!rcOverride) {
-          vx_cmd = vx;
-          vy_cmd = vy;
-          wz_cmd = wz;
-          lastCommandMs = millis();
-          activeCommandSource = SOURCE_PI_SERIAL;
-        }
-        piLinkPrintln(rcOverride ? "OK MOVE OVERRIDDEN_BY_WEB" : "OK MOVE");
-      } else {
-        CaneCommand command = parseCommand(serialLine);
-        if (!rcOverride) {
-          commandToTargets(command, vx_cmd, vy_cmd, wz_cmd);
-          lastCommandMs = millis();
-          activeCommandSource = SOURCE_PI_SERIAL;
-        }
-        piLinkPrint("OK ");
-        piLinkPrintln(rcOverride ? String(commandName(command)) + " OVERRIDDEN_BY_WEB" : commandName(command));
-      }
-      serialLine = "";
-    } else {
-      serialLine += incoming;
-    }
+void handleUsbSerialInput() {
+  while (Serial.available() > 0) {
+    char incoming = (char)Serial.read();
+    processIncomingCommandLine(usbSerialLine, incoming, false);
   }
 }
 
@@ -1098,7 +1120,7 @@ void setupUltrasonicPins() {
     }
 
     pinMode(sensor.trigger, OUTPUT);
-    pinMode(sensor.echo, INPUT);
+    pinMode(sensor.echo, INPUT_PULLDOWN);
     digitalWrite(sensor.trigger, LOW);
   }
 }
@@ -1133,6 +1155,7 @@ void setup() {
 void loop() {
   server.handleClient();
   handleSerialInput();
+  handleUsbSerialInput();
   bool rcOverride = webControlActive();
 
   if (!rcOverride) {
