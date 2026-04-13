@@ -420,6 +420,12 @@ enum CaneCommand {
   CMD_RIGHT
 };
 
+enum CommandSource {
+  SOURCE_NONE,
+  SOURCE_WEB,
+  SOURCE_PI_SERIAL
+};
+
 struct MotorState {
   int in1;
   int in2;
@@ -473,6 +479,7 @@ float motorImuGyroBiasZ = 0.0f;
 float nearestObstacleCm = -1.0f;
 float ultrasonicDistances[ULTRASONIC_SENSOR_COUNT] = { -1.0f, -1.0f, -1.0f, -1.0f };
 unsigned long ultrasonicSampleAtMs[ULTRASONIC_SENSOR_COUNT] = { 0, 0, 0, 0 };
+CommandSource activeCommandSource = SOURCE_NONE;
 
 void debugLog(const String &message) {
   Serial.println(message);
@@ -709,6 +716,7 @@ void stopTargets() {
   m1.cmd = 0.0f;
   m2.cmd = 0.0f;
   m3.cmd = 0.0f;
+  activeCommandSource = SOURCE_NONE;
 }
 
 bool webControlActive() {
@@ -949,6 +957,7 @@ void handleSerialInput() {
           vy_cmd = vy;
           wz_cmd = wz;
           lastCommandMs = millis();
+          activeCommandSource = SOURCE_PI_SERIAL;
         }
         piLinkPrintln(rcOverride ? "OK MOVE OVERRIDDEN_BY_WEB" : "OK MOVE");
       } else {
@@ -956,6 +965,7 @@ void handleSerialInput() {
         if (!rcOverride) {
           commandToTargets(command, vx_cmd, vy_cmd, wz_cmd);
           lastCommandMs = millis();
+          activeCommandSource = SOURCE_PI_SERIAL;
         }
         piLinkPrint("OK ");
         piLinkPrintln(rcOverride ? String(commandName(command)) + " OVERRIDDEN_BY_WEB" : commandName(command));
@@ -985,6 +995,7 @@ void handleCmd() {
   wz_cmd = applyDeadzone(wz_cmd, DEADZONE);
   lastCommandMs = millis();
   lastWebCommandMs = lastCommandMs;
+  activeCommandSource = SOURCE_WEB;
 
   server.send(200, "text/plain", "OK");
 }
@@ -993,6 +1004,7 @@ void handleStop() {
   stopTargets();
   lastCommandMs = millis();
   lastWebCommandMs = lastCommandMs;
+  activeCommandSource = SOURCE_WEB;
   server.send(200, "text/plain", "STOPPED");
 }
 
@@ -1143,7 +1155,7 @@ void loop() {
   lastLoopUs = nowUs;
   dt = clampf(dt, 0.0005f, 0.05f);
 
-  if (millis() - lastCommandMs > COMMAND_TIMEOUT_MS) {
+  if (activeCommandSource == SOURCE_WEB && millis() - lastCommandMs > COMMAND_TIMEOUT_MS) {
     stopTargets();
   }
 

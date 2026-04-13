@@ -47,6 +47,54 @@ URL: http://192.168.4.1/update
 Use that page to upload the compiled `.bin` firmware image and reboot the board
 without USB reflashing.
 
+Windows build helper:
+
+- [build_ota_bin_windows.bat](/Users/hanyuxuan/Desktop/REDesign/esp32/build_ota_bin_windows.bat)
+- [build_ota_bin_windows.ps1](/Users/hanyuxuan/Desktop/REDesign/esp32/build_ota_bin_windows.ps1)
+
+On Windows, the fastest OTA workflow is:
+
+1. Install `arduino-cli`.
+2. Install the ESP32 core once:
+
+```powershell
+arduino-cli core update-index
+arduino-cli core install esp32:esp32
+```
+
+3. From the repo root, run:
+
+```powershell
+.\esp32\build_ota_bin_windows.bat
+```
+
+Or from inside the `esp32` folder, run:
+
+```powershell
+.\build_ota_bin_windows.bat
+```
+
+4. The script writes the OTA app binary to:
+
+```text
+esp32\build\esp32-ota\smartcane_esp32_ota.bin
+```
+
+5. Connect to `ESP32_OMNI_BOT`, open `http://192.168.4.1/update`, and upload
+   that `.bin`.
+
+The default board target is:
+
+```text
+esp32:esp32:esp32s3
+```
+
+If your exact ESP32-S3 board definition is different, pass it explicitly:
+
+```powershell
+.\esp32\build_ota_bin_windows.bat -Fqbn esp32:esp32:esp32s3
+```
+
 That page is intentionally kept aligned with the standalone reference sketch:
 
 - move joystick
