@@ -70,11 +70,13 @@ static const uint32_t STEP_DELAY_FAST = 2500;
 static const unsigned long ULTRASONIC_POLL_INTERVAL_MS = 35;
 static const unsigned long ULTRASONIC_SAMPLE_STALE_MS = 250;
 static const unsigned long ULTRASONIC_ECHO_TIMEOUT_US = 18000;
-static const float OBSTACLE_TRIGGER_CM = 100.0f;
-static const unsigned long FRONT_REVERSE_DURATION_MS = 500;
-static const unsigned long FRONT_SIDESTEP_DURATION_MS = 700;
-static const unsigned long SIDE_SIDESTEP_DURATION_MS = 350;
-static const unsigned long AVOIDANCE_COOLDOWN_MS = 250;
+static const float OBSTACLE_TRIGGER_CM = 20.0f;
+static const unsigned long FRONT_REVERSE_DURATION_MS = 900;
+static const unsigned long FRONT_SIDESTEP_DURATION_MS = 1200;
+static const unsigned long SIDE_SIDESTEP_DURATION_MS = 700;
+static const unsigned long AVOIDANCE_COOLDOWN_MS = 400;
+static const unsigned long AVOIDANCE_STARTUP_SETTLE_MS = 1500;
+static const uint8_t AVOIDANCE_CONFIRMATION_COUNT = 2;
 static const float AVOIDANCE_REVERSE_SPEED = 0.70f;
 static const float AVOIDANCE_SIDESTEP_SPEED = 0.80f;
 static const uint8_t MPU6050_ADDR = 0x68;
@@ -505,6 +507,9 @@ unsigned long avoidanceModeStartedAtMs = 0;
 unsigned long avoidanceSidestepDurationMs = FRONT_SIDESTEP_DURATION_MS;
 float bestRightDistanceDuringReverseCm = -1.0f;
 float bestLeftDistanceDuringReverseCm = -1.0f;
+uint8_t frontObstacleConfirmCount = 0;
+uint8_t rightObstacleConfirmCount = 0;
+uint8_t leftObstacleConfirmCount = 0;
 
 void debugLog(const String &message) {
   Serial.println(message);
@@ -990,15 +995,36 @@ void setAvoidanceMode(AvoidanceMode mode, unsigned long nowMs, const String &rea
   avoidanceModeStartedAtMs = nowMs;
 }
 
+void resetAvoidanceConfirmCounters() {
+  frontObstacleConfirmCount = 0;
+  rightObstacleConfirmCount = 0;
+  leftObstacleConfirmCount = 0;
+}
+
+uint8_t bumpConfirmCounter(uint8_t currentValue) {
+  if (currentValue >= AVOIDANCE_CONFIRMATION_COUNT) {
+    return AVOIDANCE_CONFIRMATION_COUNT;
+  }
+  return currentValue + 1;
+}
+
 void beginFrontAvoidance(unsigned long nowMs) {
   bestRightDistanceDuringReverseCm = -1.0f;
   bestLeftDistanceDuringReverseCm = -1.0f;
+  resetAvoidanceConfirmCounters();
   setAvoidanceMode(AVOIDANCE_REVERSE, nowMs, "front obstacle on sensor 4");
 }
 
 void beginSideAvoidance(bool moveLeft, unsigned long nowMs, const String &reason) {
   avoidanceSidestepDurationMs = SIDE_SIDESTEP_DURATION_MS;
+  resetAvoidanceConfirmCounters();
   setAvoidanceMode(moveLeft ? AVOIDANCE_SIDESTEP_LEFT : AVOIDANCE_SIDESTEP_RIGHT, nowMs, reason);
+}
+
+bool detectionSensorsReady(unsigned long nowMs) {
+  return freshUltrasonicDistanceCm(RIGHT_SENSOR_INDEX, nowMs) >= 0.0f
+    && freshUltrasonicDistanceCm(LEFT_SENSOR_INDEX, nowMs) >= 0.0f
+    && freshUltrasonicDistanceCm(FRONT_SENSOR_INDEX, nowMs) >= 0.0f;
 }
 
 void updateAvoidanceState(unsigned long nowMs) {
@@ -1008,22 +1034,41 @@ void updateAvoidanceState(unsigned long nowMs) {
 
   switch (activeAvoidanceMode) {
     case AVOIDANCE_NONE:
-      if (frontDistance > 0.0f && frontDistance <= OBSTACLE_TRIGGER_CM) {
+      if (nowMs < AVOIDANCE_STARTUP_SETTLE_MS || !detectionSensorsReady(nowMs)) {
+        resetAvoidanceConfirmCounters();
+        return;
+      }
+
+      frontObstacleConfirmCount =
+        (frontDistance > 0.0f && frontDistance <= OBSTACLE_TRIGGER_CM)
+          ? bumpConfirmCounter(frontObstacleConfirmCount)
+          : 0;
+      rightObstacleConfirmCount =
+        (rightDistance > 0.0f && rightDistance <= OBSTACLE_TRIGGER_CM
+          && (leftDistance < 0.0f || rightDistance <= leftDistance))
+          ? bumpConfirmCounter(rightObstacleConfirmCount)
+          : 0;
+      leftObstacleConfirmCount =
+        (leftDistance > 0.0f && leftDistance <= OBSTACLE_TRIGGER_CM
+          && (rightDistance < 0.0f || leftDistance < rightDistance))
+          ? bumpConfirmCounter(leftObstacleConfirmCount)
+          : 0;
+
+      if (frontObstacleConfirmCount >= AVOIDANCE_CONFIRMATION_COUNT) {
         beginFrontAvoidance(nowMs);
         return;
       }
 
-      if (rightDistance > 0.0f && rightDistance <= OBSTACLE_TRIGGER_CM
-          && (leftDistance < 0.0f || rightDistance <= leftDistance)) {
+      if (rightObstacleConfirmCount >= AVOIDANCE_CONFIRMATION_COUNT) {
         beginSideAvoidance(true, nowMs, "right obstacle on sensor 1");
         return;
       }
 
-      if (leftDistance > 0.0f && leftDistance <= OBSTACLE_TRIGGER_CM
-          && (rightDistance < 0.0f || leftDistance < rightDistance)) {
+      if (leftObstacleConfirmCount >= AVOIDANCE_CONFIRMATION_COUNT) {
         beginSideAvoidance(false, nowMs, "left obstacle on sensor 3");
         return;
       }
+
       return;
 
     case AVOIDANCE_REVERSE:
@@ -1063,6 +1108,7 @@ void updateAvoidanceState(unsigned long nowMs) {
     case AVOIDANCE_COOLDOWN:
       if ((nowMs - avoidanceModeStartedAtMs) >= AVOIDANCE_COOLDOWN_MS) {
         activeAvoidanceMode = AVOIDANCE_NONE;
+        resetAvoidanceConfirmCounters();
       }
       return;
   }

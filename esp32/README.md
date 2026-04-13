@@ -163,13 +163,14 @@ Current avoidance roles:
 
 Current local ESP32 avoidance behavior:
 
-- if sensor 4 reports an obstacle within about `100 cm`, the cane reverses for
-  `0.5 s`
+- on boot, avoidance stays inactive until the ultrasonic readings have settled
+- if sensor 4 reports an obstacle within about `20 cm`, the cane reverses for
+  about `0.9 s`
 - while reversing, it compares the best clearance seen on sensor 1 and sensor 3
 - it then sidesteps toward the side with the greater clearance
-- if sensor 1 is the closest side obstacle within about `100 cm`, it sidesteps
+- if sensor 1 is the closest side obstacle within about `20 cm`, it sidesteps
   left
-- if sensor 3 is the closest side obstacle within about `100 cm`, it sidesteps
+- if sensor 3 is the closest side obstacle within about `20 cm`, it sidesteps
   right
 
 This avoidance runs locally on the ESP32 and temporarily overrides Pi
