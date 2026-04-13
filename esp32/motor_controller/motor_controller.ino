@@ -211,19 +211,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
-    .slider-row {
-      margin: 10px 0;
-    }
-    .slider-row label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      color: #c7d8ee;
-      margin-bottom: 6px;
-    }
-    input[type="range"] {
-      width: 100%;
-    }
     .quick-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -285,21 +272,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     </div>
 
     <div class="card">
-      <h3>Speed Tuning</h3>
-      <div class="slider-row">
-        <label><span>Translate speed</span><span id="translateValue">0.35</span></label>
-        <input id="translateScale" type="range" min="0.00" max="1.00" step="0.05" value="0.35" oninput="updateScaleLabels()">
-      </div>
-      <div class="slider-row">
-        <label><span>Rotate speed</span><span id="rotateValue">0.30</span></label>
-        <input id="rotateScale" type="range" min="0.00" max="1.00" step="0.05" value="0.30" oninput="updateScaleLabels()">
-      </div>
-      <p style="font-size:12px; color:#93aacb; margin:8px 0 0;">
-        Low-speed backup mode now snaps to a stable commutation floor to avoid motor chatter.
-      </p>
-    </div>
-
-    <div class="card">
       <h3>Quick Controls</h3>
       <div class="quick-grid">
         <div></div>
@@ -334,9 +306,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     let lastSend = 0;
     let quickMoveActive = false;
     var overrideLatched = false;
-    const STABLE_TRANSLATE_FLOOR = 0.48;
-    const STABLE_ROTATE_FLOOR = 0.44;
-    const RESPONSE_EXPONENT = 1.35;
 
     function clamp(v, lo, hi) {
       return Math.max(lo, Math.min(hi, v));
@@ -435,31 +404,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       sendCmd(true);
     }
 
-    function updateScaleLabels() {
-      document.getElementById('translateValue').textContent = Number(document.getElementById('translateScale').value).toFixed(2);
-      document.getElementById('rotateValue').textContent = Number(document.getElementById('rotateScale').value).toFixed(2);
-    }
-
-    function scaledCommand() {
-      const translateScale = Number(document.getElementById('translateScale').value);
-      const rotateScale = Number(document.getElementById('rotateScale').value);
-      return {
-        vx: shapeCommandAxis(vx, translateScale, STABLE_TRANSLATE_FLOOR),
-        vy: shapeCommandAxis(vy, translateScale, STABLE_TRANSLATE_FLOOR),
-        wz: shapeCommandAxis(wz, rotateScale, STABLE_ROTATE_FLOOR)
-      };
-    }
-
-    function shapeCommandAxis(value, sliderScale, stableFloor) {
-      const magnitude = Math.abs(value);
-      if (magnitude < 0.001) return 0;
-
-      const shaped = Math.pow(magnitude, RESPONSE_EXPONENT);
-      const ceiling = stableFloor + (1 - stableFloor) * sliderScale;
-      const output = stableFloor + shaped * (ceiling - stableFloor);
-      return (value < 0 ? -1 : 1) * output;
-    }
-
     function emergencyStop() {
       vx = 0; vy = 0; wz = 0;
       resetMove();
@@ -517,14 +461,13 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       const now = Date.now();
       if (!force && now - lastSend < 80) return;
       lastSend = now;
-      const scaled = scaledCommand();
       try {
-        await fetch(`/cmd?vx=${scaled.vx.toFixed(3)}&vy=${scaled.vy.toFixed(3)}&wz=${scaled.wz.toFixed(3)}`, {
+        await fetch(`/cmd?vx=${vx.toFixed(3)}&vy=${vy.toFixed(3)}&wz=${wz.toFixed(3)}`, {
           method: 'GET',
           cache: 'no-store'
         });
         document.getElementById('status').textContent =
-          `Connected | scaled vx=${scaled.vx.toFixed(2)} vy=${scaled.vy.toFixed(2)} wz=${scaled.wz.toFixed(2)}`;
+          `Connected | vx=${vx.toFixed(2)} vy=${vy.toFixed(2)} wz=${wz.toFixed(2)}`;
       } catch (e) {
         document.getElementById('status').textContent = 'Not connected to ESP32';
       }
@@ -546,7 +489,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       }
     }
 
-    updateScaleLabels();
     renderOverrideState();
     setInterval(() => sendCmd(false), 80);
     setInterval(() => pollStatus(), 300);

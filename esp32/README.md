@@ -15,7 +15,6 @@ LEFT
 RIGHT
 FORWARD
 STOP
-MOVE <vx> <vy> <wz>
 ```
 
 Current ESP32 UART pins:
@@ -43,7 +42,6 @@ standalone test sketch, plus demo-backup controls:
 
 - explicit `Arm backup override` latch
 - live control-source / wheel-mix / ultrasonic status
-- translate and rotate speed sliders
 - quick directional buttons for forward / left / right / stop
 
 Control priority:
@@ -76,7 +74,7 @@ the original DRV8313 6-step commutation pattern, but now uses the tuned
 omni-drive mixing/ramping path from the standalone remote-control sketch under
 both control modes:
 
-- Pi serial commands: `MOVE <vx> <vy> <wz>` or fallback `LEFT`, `RIGHT`, `FORWARD`, `STOP`
+- Pi serial commands: `LEFT`, `RIGHT`, `FORWARD`, `STOP`
 - Wi-Fi AP + browser joystick testing
 
 Ultrasonic note:

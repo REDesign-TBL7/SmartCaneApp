@@ -143,44 +143,29 @@ final class GuidanceFusionManager: ObservableObject {
     }
 
     private func dispatchFusedMotion() {
-        let profile = motionProfile(
+        let profile = commandProfile(
             baseCommand: routeBaseCommand,
             instructionText: routeInstructionText,
             caneState: connectionManager.caneState,
-            latestHazardAssessment: visionManager.latestHazardAssessment,
             latestTrafficLightAssessment: visionManager.latestTrafficLightAssessment
         )
 
-        connectionManager.sendMotionCommand(
-            profile.command,
-            vx: profile.vx,
-            vy: profile.vy,
-            wz: profile.wz,
-            instructionText: profile.instructionText
-        )
+        connectionManager.sendNavigationCommand(profile.command, instructionText: profile.instructionText)
     }
 
-    private func motionProfile(
+    private func commandProfile(
         baseCommand: NavigationCommand,
         instructionText: String,
         caneState: CaneState,
-        latestHazardAssessment: String,
         latestTrafficLightAssessment: String
-    ) -> (command: NavigationCommand, vx: Double, vy: Double, wz: Double, instructionText: String) {
+    ) -> (command: NavigationCommand, instructionText: String) {
         guard caneState.connectionStatus == .connected else {
-            return (.stop, 0, 0, 0, instructionText)
+            return (.stop, instructionText)
         }
 
         if isImmediateStopRecommended || caneState.faultCode != .none {
-            return (.stop, 0, 0, 0, "Stopping for safety")
+            return (.stop, "Stopping for safety")
         }
-
-        let obstacleDistance = caneState.nearestObstacleCm
-        let hasConfirmedHazard =
-            latestHazardAssessment != "No confirmed hazard"
-            && latestHazardAssessment != "Obstacle not visually confirmed."
-            && latestHazardAssessment != "VLM idle"
-            && !latestHazardAssessment.isEmpty
 
         let hasBlockingTrafficSignal =
             latestTrafficLightAssessment.localizedCaseInsensitiveContains("red")
@@ -188,44 +173,18 @@ final class GuidanceFusionManager: ObservableObject {
             || latestTrafficLightAssessment.localizedCaseInsensitiveContains("don't cross")
 
         if hasBlockingTrafficSignal && baseCommand == .forward {
-            return (.stop, 0, 0, 0, "Traffic signal says do not cross")
-        }
-
-        var forwardScale = 0.65
-        var turnScale = 0.42
-
-        switch obstacleDistance {
-        case ..<0:
-            break
-        case 0..<45:
-            return (.stop, 0, 0, 0, "Obstacle too close. Stopping.")
-        case 45..<70:
-            forwardScale = 0.18
-            turnScale = 0.20
-        case 70..<100:
-            forwardScale = 0.28
-            turnScale = 0.24
-        case 100..<150:
-            forwardScale = 0.40
-            turnScale = 0.30
-        default:
-            break
-        }
-
-        if hasConfirmedHazard, obstacleDistance >= 0, obstacleDistance < 150 {
-            forwardScale *= 0.85
-            turnScale *= 0.90
+            return (.stop, "Traffic signal says do not cross")
         }
 
         switch baseCommand {
         case .forward:
-            return (.forward, 0.0, -forwardScale, 0.0, instructionText)
+            return (.forward, instructionText)
         case .left:
-            return (.left, 0.0, 0.0, turnScale, instructionText)
+            return (.left, instructionText)
         case .right:
-            return (.right, 0.0, 0.0, -turnScale, instructionText)
+            return (.right, instructionText)
         case .stop:
-            return (.stop, 0.0, 0.0, 0.0, instructionText)
+            return (.stop, instructionText)
         }
     }
 }
