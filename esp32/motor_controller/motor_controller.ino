@@ -70,8 +70,9 @@ static const uint32_t STEP_DELAY_FAST = 2500;
 static const unsigned long ULTRASONIC_POLL_INTERVAL_MS = 35;
 static const unsigned long ULTRASONIC_SAMPLE_STALE_MS = 250;
 static const unsigned long ULTRASONIC_ECHO_TIMEOUT_US = 18000;
-static const float OBSTACLE_TRIGGER_CM = 20.0f;
-static const unsigned long FRONT_REVERSE_DURATION_MS = 900;
+static const float OBSTACLE_TRIGGER_CM = 5.0f;
+static const float OBSTACLE_CLEAR_CM = 8.0f;
+static const unsigned long FRONT_REVERSE_DURATION_MS = 250;
 static const unsigned long FRONT_SIDESTEP_DURATION_MS = 1200;
 static const unsigned long SIDE_SIDESTEP_DURATION_MS = 700;
 static const unsigned long AVOIDANCE_COOLDOWN_MS = 400;
@@ -510,6 +511,7 @@ float bestLeftDistanceDuringReverseCm = -1.0f;
 uint8_t frontObstacleConfirmCount = 0;
 uint8_t rightObstacleConfirmCount = 0;
 uint8_t leftObstacleConfirmCount = 0;
+bool frontObstacleLatched = false;
 
 void debugLog(const String &message) {
   Serial.println(message);
@@ -631,21 +633,19 @@ bool parseMotionCommand(String line, float &vx, float &vy, float &wz) {
 void commandToTargets(CaneCommand command, float &vx, float &vy, float &wz) {
   switch (command) {
     case CMD_FORWARD:
-      // Match the reference joystick axes:
-      // - pushing the move stick up yields vx = +1
-      // - left/right navigation should feel like a lateral pull, not a spin
-      vx = 1.0f;
+      // Physical motor wiring is mirrored on the current build.
+      vx = -1.0f;
       vy = 0.0f;
       wz = 0.0f;
       break;
     case CMD_LEFT:
       vx = 0.0f;
-      vy = 1.0f;
+      vy = -1.0f;
       wz = 0.0f;
       break;
     case CMD_RIGHT:
       vx = 0.0f;
-      vy = -1.0f;
+      vy = 1.0f;
       wz = 0.0f;
       break;
     case CMD_STOP:
@@ -1012,6 +1012,7 @@ void beginFrontAvoidance(unsigned long nowMs) {
   bestRightDistanceDuringReverseCm = -1.0f;
   bestLeftDistanceDuringReverseCm = -1.0f;
   resetAvoidanceConfirmCounters();
+  frontObstacleLatched = true;
   setAvoidanceMode(AVOIDANCE_REVERSE, nowMs, "front obstacle on sensor 4");
 }
 
@@ -1032,6 +1033,12 @@ void updateAvoidanceState(unsigned long nowMs) {
   float leftDistance = freshUltrasonicDistanceCm(LEFT_SENSOR_INDEX, nowMs);
   float frontDistance = freshUltrasonicDistanceCm(FRONT_SENSOR_INDEX, nowMs);
 
+  if (frontObstacleLatched) {
+    if (frontDistance < 0.0f || frontDistance > OBSTACLE_CLEAR_CM) {
+      frontObstacleLatched = false;
+    }
+  }
+
   switch (activeAvoidanceMode) {
     case AVOIDANCE_NONE:
       if (nowMs < AVOIDANCE_STARTUP_SETTLE_MS || !detectionSensorsReady(nowMs)) {
@@ -1040,7 +1047,7 @@ void updateAvoidanceState(unsigned long nowMs) {
       }
 
       frontObstacleConfirmCount =
-        (frontDistance > 0.0f && frontDistance <= OBSTACLE_TRIGGER_CM)
+        (!frontObstacleLatched && frontDistance > 0.0f && frontDistance <= OBSTACLE_TRIGGER_CM)
           ? bumpConfirmCounter(frontObstacleConfirmCount)
           : 0;
       rightObstacleConfirmCount =
@@ -1123,18 +1130,18 @@ void effectiveMotionTargets(float &vx, float &vy, float &wz, unsigned long nowMs
 
   switch (activeAvoidanceMode) {
     case AVOIDANCE_REVERSE:
-      vx = -AVOIDANCE_REVERSE_SPEED;
+      vx = AVOIDANCE_REVERSE_SPEED;
       vy = 0.0f;
       wz = 0.0f;
       break;
     case AVOIDANCE_SIDESTEP_LEFT:
       vx = 0.0f;
-      vy = AVOIDANCE_SIDESTEP_SPEED;
+      vy = -AVOIDANCE_SIDESTEP_SPEED;
       wz = 0.0f;
       break;
     case AVOIDANCE_SIDESTEP_RIGHT:
       vx = 0.0f;
-      vy = -AVOIDANCE_SIDESTEP_SPEED;
+      vy = AVOIDANCE_SIDESTEP_SPEED;
       wz = 0.0f;
       break;
     case AVOIDANCE_COOLDOWN:

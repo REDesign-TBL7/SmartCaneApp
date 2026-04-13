@@ -164,13 +164,14 @@ Current avoidance roles:
 Current local ESP32 avoidance behavior:
 
 - on boot, avoidance stays inactive until the ultrasonic readings have settled
-- if sensor 4 reports an obstacle within about `20 cm`, the cane reverses for
-  about `0.9 s`
+- if sensor 4 reports an obstacle within about `5 cm`, the cane reverses once
+  for about `0.25 s`
 - while reversing, it compares the best clearance seen on sensor 1 and sensor 3
 - it then sidesteps toward the side with the greater clearance
-- if sensor 1 is the closest side obstacle within about `20 cm`, it sidesteps
+- it will not re-trigger front avoidance until sensor 4 clears again
+- if sensor 1 is the closest side obstacle within about `5 cm`, it sidesteps
   left
-- if sensor 3 is the closest side obstacle within about `20 cm`, it sidesteps
+- if sensor 3 is the closest side obstacle within about `5 cm`, it sidesteps
   right
 
 This avoidance runs locally on the ESP32 and temporarily overrides Pi
@@ -180,9 +181,9 @@ Important calibration note:
 
 The current serial command mapping is translated onto the omni-drive mixer:
 
-- `FORWARD`: mapped to forward translation
-- `LEFT`: mapped to leftward translation / pull
-- `RIGHT`: mapped to rightward translation / pull
+- `FORWARD`: mapped to forward translation for the current mirrored motor wiring
+- `LEFT`: mapped to leftward translation / pull for the current mirrored motor wiring
+- `RIGHT`: mapped to rightward translation / pull for the current mirrored motor wiring
 - `STOP`: all motor phases off
 
 If wheel directions are inverted, flip `INVERT_M1`, `INVERT_M2`, and
