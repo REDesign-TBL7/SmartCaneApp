@@ -3,8 +3,7 @@ Pi-to-ESP32 motor bridge.
 
 The Raspberry Pi no longer drives the motor GPIO pins directly. The Pi receives
 commands from the iPhone app over WebSocket, applies safety logic, then forwards
-either a continuous MOVE vector or a fallback LEFT / RIGHT / FORWARD / STOP
-command to the ESP32 over serial.
+LEFT / RIGHT / FORWARD / STOP to the ESP32 over serial.
 """
 
 import os
@@ -35,14 +34,6 @@ class MotorCommand:
 
 
 @dataclass
-class MotionCommand:
-    vx: float
-    vy: float
-    wz: float
-    sent_to_esp32: bool
-
-
-@dataclass
 class MotorIMUTelemetry:
     """Latest IMU sample from the ESP32 motor unit."""
 
@@ -63,7 +54,6 @@ class MotorController:
         self.baud_rate = int(os.getenv("SMARTCANE_ESP32_BAUD", DEFAULT_BAUD_RATE))
         self.serial_connection = None
         self.last_command = MotorCommand(command="STOP", sent_to_esp32=False)
-        self.last_motion = MotionCommand(vx=0.0, vy=0.0, wz=0.0, sent_to_esp32=False)
         self.last_serial_line = "STOP"
         self.latest_motor_imu = MotorIMUTelemetry()
         self.latest_ultrasonic = UltrasonicTelemetry()
@@ -86,40 +76,8 @@ class MotorController:
 
         was_sent = self._send_line_to_esp32(command, f"Sent motor command to ESP32: {command}")
         self.last_command = MotorCommand(command=command, sent_to_esp32=was_sent)
-        if was_sent:
-            self.last_motion = MotionCommand(vx=0.0, vy=0.0, wz=0.0, sent_to_esp32=False)
         logger.debug("Motor command result command=%s sent=%s", command, was_sent)
         return self.last_command
-
-    def apply_motion_command(self, vx: float, vy: float, wz: float) -> MotionCommand:
-        self.poll_motor_imu()
-
-        vx = self._clamp_motion_component(vx)
-        vy = self._clamp_motion_component(vy)
-        wz = self._clamp_motion_component(wz)
-
-        if max(abs(vx), abs(vy), abs(wz)) < 0.001:
-            self.apply_discrete_command("STOP")
-            self.last_motion = MotionCommand(vx=0.0, vy=0.0, wz=0.0, sent_to_esp32=self.last_command.sent_to_esp32)
-            return self.last_motion
-
-        serial_line = f"MOVE {vx:.3f} {vy:.3f} {wz:.3f}"
-        if (
-            self.last_motion.sent_to_esp32
-            and self.last_serial_line == serial_line
-        ):
-            logger.debug("Skipping duplicate motion command %s", serial_line)
-            return self.last_motion
-
-        was_sent = self._send_line_to_esp32(
-            serial_line,
-            f"Sent motion command to ESP32: vx={vx:.3f} vy={vy:.3f} wz={wz:.3f}",
-        )
-        self.last_motion = MotionCommand(vx=vx, vy=vy, wz=wz, sent_to_esp32=was_sent)
-        if was_sent:
-            self.last_command = MotorCommand(command="STOP", sent_to_esp32=False)
-        logger.debug("Motion command result vx=%.3f vy=%.3f wz=%.3f sent=%s", vx, vy, wz, was_sent)
-        return self.last_motion
 
     def poll_motor_imu(self) -> MotorIMUTelemetry:
         """Read ESP32 motor-unit IMU lines without blocking.
@@ -204,10 +162,6 @@ class MotorController:
     def _normalize_command(cmd: str) -> str:
         command = (cmd or "STOP").strip().upper()
         return command if command in VALID_COMMANDS else "STOP"
-
-    @staticmethod
-    def _clamp_motion_component(value: float) -> float:
-        return max(-1.0, min(1.0, float(value)))
 
     def _handle_esp32_line(self, line: str) -> None:
         if not line:

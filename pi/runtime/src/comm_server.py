@@ -60,15 +60,6 @@ class CommServer:
                         self.latest_discrete_command,
                         self.latest_instruction_text,
                     )
-                elif payload_type == "MOTION_CMD":
-                    diagnostics_state.set_stage("CM")
-                    self.latest_discrete_command = payload.get("command", "STOP")
-                    self.latest_instruction_text = payload.get("instructionText", "")
-                    logger.info(
-                        "Updated motion payload as discrete command %s (%s)",
-                        self.latest_discrete_command,
-                        self.latest_instruction_text,
-                    )
                 elif payload_type == "HEARTBEAT":
                     self.heartbeat_count += 1
                     self.last_heartbeat_time = time.monotonic()

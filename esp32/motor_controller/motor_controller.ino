@@ -367,6 +367,7 @@ float vx_cmd = 0.0f;
 float vy_cmd = 0.0f;
 float wz_cmd = 0.0f;
 unsigned long lastCommandMs = 0;
+unsigned long lastWebCommandMs = 0;
 unsigned long lastLoopUs = 0;
 unsigned long lastMotorImuTelemetryAtMs = 0;
 unsigned long lastUltrasonicTelemetryAtMs = 0;
@@ -611,6 +612,10 @@ void stopTargets() {
   m3.cmd = 0.0f;
 }
 
+bool webControlActive() {
+  return (millis() - lastWebCommandMs) <= COMMAND_TIMEOUT_MS;
+}
+
 void printStatus() {
   static unsigned long lastPrint = 0;
   if (millis() - lastPrint < 250) return;
@@ -694,18 +699,23 @@ void handleSerialInput() {
       float vx = 0.0f;
       float vy = 0.0f;
       float wz = 0.0f;
+      bool rcOverride = webControlActive();
       if (parseMotionCommand(serialLine, vx, vy, wz)) {
-        vx_cmd = vx;
-        vy_cmd = vy;
-        wz_cmd = wz;
-        lastCommandMs = millis();
-        piLinkPrintln("OK MOVE");
+        if (!rcOverride) {
+          vx_cmd = vx;
+          vy_cmd = vy;
+          wz_cmd = wz;
+          lastCommandMs = millis();
+        }
+        piLinkPrintln(rcOverride ? "OK MOVE OVERRIDDEN_BY_WEB" : "OK MOVE");
       } else {
         CaneCommand command = parseCommand(serialLine);
-        commandToTargets(command, vx_cmd, vy_cmd, wz_cmd);
-        lastCommandMs = millis();
+        if (!rcOverride) {
+          commandToTargets(command, vx_cmd, vy_cmd, wz_cmd);
+          lastCommandMs = millis();
+        }
         piLinkPrint("OK ");
-        piLinkPrintln(commandName(command));
+        piLinkPrintln(rcOverride ? String(commandName(command)) + " OVERRIDDEN_BY_WEB" : commandName(command));
       }
       serialLine = "";
     } else {
@@ -727,6 +737,7 @@ void handleCmd() {
   vy_cmd = applyDeadzone(vy_cmd, DEADZONE);
   wz_cmd = applyDeadzone(wz_cmd, DEADZONE);
   lastCommandMs = millis();
+  lastWebCommandMs = lastCommandMs;
 
   server.send(200, "text/plain", "OK");
 }
@@ -734,6 +745,7 @@ void handleCmd() {
 void handleStop() {
   stopTargets();
   lastCommandMs = millis();
+  lastWebCommandMs = lastCommandMs;
   server.send(200, "text/plain", "STOPPED");
 }
 
@@ -810,16 +822,20 @@ void setup() {
 
 void loop() {
   server.handleClient();
-  handleSerialInput();
-  updateMotorUnitImu();
-  updateUltrasonicSensors();
+  bool rcOverride = webControlActive();
+
+  if (!rcOverride) {
+    handleSerialInput();
+    updateMotorUnitImu();
+    updateUltrasonicSensors();
+  }
 
   unsigned long nowMs = millis();
-  if (nowMs - lastMotorImuTelemetryAtMs >= 200) {
+  if (!rcOverride && nowMs - lastMotorImuTelemetryAtMs >= 200) {
     lastMotorImuTelemetryAtMs = nowMs;
     sendMotorImuTelemetry();
   }
-  if (nowMs - lastUltrasonicTelemetryAtMs >= 120) {
+  if (!rcOverride && nowMs - lastUltrasonicTelemetryAtMs >= 120) {
     lastUltrasonicTelemetryAtMs = nowMs;
     sendUltrasonicTelemetry();
   }

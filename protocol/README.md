@@ -25,8 +25,6 @@ Debug connectivity:
 Motor command bridge:
 - After Pi safety checks, the Pi forwards `LEFT`, `RIGHT`, `FORWARD`, or `STOP`
   to the ESP32 as newline-terminated serial text.
-- Legacy `MOTION_CMD` payloads may still be accepted by the Pi for compatibility,
-  but they are collapsed back to discrete commands before the ESP32 link.
 - The ESP32 owns DRV8313 motor pin sequencing.
 - The ESP32 also owns the motor-unit IMU and reports `MOTOR_IMU ...` serial lines
   back to the Pi.

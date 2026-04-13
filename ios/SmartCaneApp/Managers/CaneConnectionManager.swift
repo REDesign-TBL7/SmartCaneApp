@@ -87,7 +87,6 @@ final class CaneConnectionManager: ObservableObject {
     private var receiveTask: Task<Void, Never>?
     private var frameHandler: ((FrameSample) -> Void)?
     private var savedRouteCommand: (command: NavigationCommand, instructionText: String)?
-    private var lastMotionSignature: String?
     private var isSafetyOverrideActive = false
     private var isVisionSafetyOverrideActive = false
     private let encoder = JSONEncoder()
@@ -342,17 +341,6 @@ final class CaneConnectionManager: ObservableObject {
         sendEffectiveNavigationCommand(command, instructionText: instructionText)
     }
 
-    func sendMotionCommand(
-        _ command: NavigationCommand,
-        vx: Double,
-        vy: Double,
-        wz: Double,
-        instructionText: String
-    ) {
-        _ = (vx, vy, wz)
-        sendNavigationCommand(command, instructionText: instructionText)
-    }
-
     func sendDebugPing() {
         let label = "phone_ping_\(Int(Date().timeIntervalSince1970))"
         pendingPingStartedAt = Date()
@@ -602,36 +590,13 @@ final class CaneConnectionManager: ObservableObject {
         sendRawNavigationCommand(command, instructionText: instructionText)
     }
 
-    private func sendEffectiveMotionCommand(
-        _ command: NavigationCommand,
-        vx: Double,
-        vy: Double,
-        wz: Double,
-        instructionText: String
-    ) {
-        _ = (vx, vy, wz)
-        sendEffectiveNavigationCommand(command, instructionText: instructionText)
-    }
-
     private func sendRawNavigationCommand(_ command: NavigationCommand, instructionText: String) {
         caneState.currentNavigationCommand = command
         caneState.currentInstruction = instructionText
-        lastMotionSignature = nil
 
         appendDebugLog("command", "Sending \(command.rawValue): \(instructionText)")
         send(.command(command, instructionText: instructionText))
         caneState.statusMessage = "Sent Wi-Fi direction: \(command.rawValue)"
-    }
-
-    private func sendRawMotionCommand(
-        _ command: NavigationCommand,
-        vx: Double,
-        vy: Double,
-        wz: Double,
-        instructionText: String
-    ) {
-        _ = (vx, vy, wz)
-        sendRawNavigationCommand(command, instructionText: instructionText)
     }
 
     private func startHeartbeatLoop() {
