@@ -149,7 +149,7 @@ async def camera_stream_loop(
                 bool(handle_imu["available"]),
                 float(handle_imu["gyro_z_dps"]),
             )
-        await asyncio.sleep(0.25)
+        await asyncio.sleep(0.15)
 
 
 async def bluetooth_diagnostics_loop(

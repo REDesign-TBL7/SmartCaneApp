@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CVModelView: View {
+    @EnvironmentObject private var connectionManager: CaneConnectionManager
     @EnvironmentObject private var visionManager: VisionManager
 
     var body: some View {
@@ -25,7 +26,7 @@ struct CVModelView: View {
                         .foregroundStyle(.secondary)
 
                     framePreviewCard
-                    vlmDebugCard
+                    visionSummaryCard
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
@@ -50,9 +51,11 @@ struct CVModelView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                     } else {
-                        Text("Waiting for Pi camera frame")
+                        Text(frameOverlayMessage)
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
                     }
                 }
                 .accessibilityHidden(true)
@@ -66,22 +69,15 @@ struct CVModelView: View {
         }
     }
 
-    private var vlmDebugCard: some View {
+    private var visionSummaryCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("VLM debug")
+            Text("Vision summary")
                 .font(.subheadline.weight(.semibold))
-            debugValueRow("Scene summary", visionManager.latestSceneSummary)
-            debugValueRow("Inference mode", visionManager.latestInferenceMode)
-            debugValueRow("Hazard assessment", visionManager.latestHazardAssessment)
+            debugValueRow("Scene", visionManager.latestSceneSummary)
+            debugValueRow("Hazard", visionManager.latestHazardAssessment)
             debugValueRow("Traffic light", visionManager.latestTrafficLightAssessment)
-            debugValueRow("Raw output", visionManager.latestRawModelOutput)
-            debugValueRow("Hazard tags", visionManager.latestHazardTags.isEmpty ? "none" : visionManager.latestHazardTags.joined(separator: ", "))
-            debugValueRow("Frame age", "\(visionManager.latestFrameAgeMs) ms")
-            debugValueRow("Frame size", visionManager.latestFrameByteCount > 0 ? "\(visionManager.latestFrameByteCount) bytes" : "No frame yet")
-            debugValueRow("Frame IMU", visionManager.latestFrameHandleIMUAvailable ? "Available" : "Unavailable")
-            debugValueRow("Frame IMU heading", String(format: "%.1f deg", visionManager.latestFrameHandleIMUHeadingDegrees))
-            debugValueRow("Frame IMU gyro Z", String(format: "%.2f dps", visionManager.latestFrameHandleIMUGyroZDegreesPerSecond))
-            debugValueRow("Prompt", visionManager.latestPromptText)
+            debugValueRow("Mode", visionManager.latestInferenceMode)
+            debugValueRow("Frame status", frameStatusText)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -101,6 +97,20 @@ struct CVModelView: View {
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var frameOverlayMessage: String {
+        if connectionManager.caneState.connectionStatus != .connected {
+            return "WebSocket not connected"
+        }
+        return "Waiting for Pi camera frame"
+    }
+
+    private var frameStatusText: String {
+        if connectionManager.caneState.connectionStatus != .connected {
+            return "WebSocket not connected"
+        }
+        return visionManager.latestFrameByteCount > 0 ? "Live camera frame received" : "Waiting for Pi camera frame"
     }
 
 }

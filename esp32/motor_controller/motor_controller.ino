@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Wire.h>
+#include <Update.h>
 
 // ESP32-S3 motor controller for the smart cane.
 //
@@ -66,6 +67,19 @@ static const float DEADZONE = 0.12f;
 static const float MIN_ACTIVE_CMD = 0.20f;
 static const uint32_t STEP_DELAY_SLOW = 9000;
 static const uint32_t STEP_DELAY_FAST = 2500;
+static const unsigned long ULTRASONIC_POLL_INTERVAL_MS = 35;
+static const unsigned long ULTRASONIC_SAMPLE_STALE_MS = 250;
+static const unsigned long ULTRASONIC_ECHO_TIMEOUT_US = 18000;
+static const uint8_t MPU6050_ADDR = 0x68;
+static const uint8_t REG_PWR_MGMT_1 = 0x6B;
+static const uint8_t REG_SMPLRT_DIV = 0x19;
+static const uint8_t REG_CONFIG = 0x1A;
+static const uint8_t REG_GYRO_CONFIG = 0x1B;
+static const uint8_t REG_ACCEL_CONFIG = 0x1C;
+static const uint8_t REG_ACCEL_XOUT_H = 0x3B;
+static const float MPU6050_ACCEL_LSB_PER_G = 16384.0f;
+static const float MPU6050_GYRO_LSB_PER_DPS = 131.0f;
+static const float MOTOR_IMU_COMPLEMENTARY_ALPHA = 0.96f;
 
 static const bool INVERT_M1 = false;
 static const bool INVERT_M2 = false;
@@ -167,9 +181,27 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       background: #9b1c1c;
       border-color: #c33;
     }
+    .linkbar {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+    }
+    .linkbar a {
+      color: #9fd1ff;
+      text-decoration: none;
+      font-size: 14px;
+      background: rgba(27,27,27,0.95);
+      border: 1px solid #444;
+      border-radius: 999px;
+      padding: 8px 12px;
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
+  <div class="linkbar">
+    <a href="/update">Firmware Update</a>
+  </div>
   <div class="topbar">ESP32 Omni Bot Controller</div>
   <div class="status" id="status">Connect to Wi-Fi: ESP32_OMNI_BOT → open 192.168.4.1</div>
 
@@ -326,6 +358,61 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
+const char UPDATE_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 OTA Update</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      padding: 24px;
+    }
+    .card {
+      max-width: 520px;
+      margin: 0 auto;
+      background: #1b1b1b;
+      border: 1px solid #333;
+      border-radius: 14px;
+      padding: 20px;
+    }
+    input, button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #555;
+      background: #222;
+      color: white;
+      box-sizing: border-box;
+    }
+    button {
+      background: #2f6fed;
+      border-color: #2f6fed;
+      font-weight: 600;
+    }
+    a {
+      color: #9fd1ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>ESP32 Wi-Fi Firmware Update</h2>
+    <p>Connect to <strong>ESP32_OMNI_BOT</strong>, then upload the compiled firmware binary.</p>
+    <form method="POST" action="/update" enctype="multipart/form-data">
+      <input type="file" name="firmware" accept=".bin" required>
+      <button type="submit">Upload Firmware</button>
+    </form>
+    <p><a href="/">Back to controller</a></p>
+  </div>
+</body>
+</html>
+)rawliteral";
+
 enum CaneCommand {
   CMD_STOP,
   CMD_FORWARD,
@@ -361,6 +448,7 @@ UltrasonicPins ultrasonicSensors[] = {
   { US3_TRIG, US3_ECHO },
   { US4_TRIG, US4_ECHO }
 };
+static const size_t ULTRASONIC_SENSOR_COUNT = sizeof(ultrasonicSensors) / sizeof(ultrasonicSensors[0]);
 
 String serialLine = "";
 float vx_cmd = 0.0f;
@@ -371,12 +459,20 @@ unsigned long lastWebCommandMs = 0;
 unsigned long lastLoopUs = 0;
 unsigned long lastMotorImuTelemetryAtMs = 0;
 unsigned long lastUltrasonicTelemetryAtMs = 0;
+unsigned long lastUltrasonicPollAtMs = 0;
+size_t nextUltrasonicSensorIndex = 0;
+unsigned long lastMotorImuReadUs = 0;
 
-bool motorImuAvailable = false;  // TODO: Set true after wiring the real motor-unit IMU.
+bool motorImuAvailable = false;
 float motorImuHeadingDegrees = 0.0f;
 float motorImuPitchDegrees = 0.0f;
 float motorImuRollDegrees = 0.0f;
+float motorImuGyroBiasX = 0.0f;
+float motorImuGyroBiasY = 0.0f;
+float motorImuGyroBiasZ = 0.0f;
 float nearestObstacleCm = -1.0f;
+float ultrasonicDistances[ULTRASONIC_SENSOR_COUNT] = { -1.0f, -1.0f, -1.0f, -1.0f };
+unsigned long ultrasonicSampleAtMs[ULTRASONIC_SENSOR_COUNT] = { 0, 0, 0, 0 };
 
 void debugLog(const String &message) {
   Serial.println(message);
@@ -482,19 +578,22 @@ bool parseMotionCommand(String line, float &vx, float &vy, float &wz) {
 void commandToTargets(CaneCommand command, float &vx, float &vy, float &wz) {
   switch (command) {
     case CMD_FORWARD:
-      vx = 0.0f;
-      vy = -1.0f;
+      // Match the reference joystick axes:
+      // - pushing the move stick up yields vx = +1
+      // - left/right navigation should feel like a lateral pull, not a spin
+      vx = 1.0f;
+      vy = 0.0f;
       wz = 0.0f;
       break;
     case CMD_LEFT:
       vx = 0.0f;
-      vy = 0.0f;
-      wz = 1.0f;
+      vy = 1.0f;
+      wz = 0.0f;
       break;
     case CMD_RIGHT:
       vx = 0.0f;
-      vy = 0.0f;
-      wz = -1.0f;
+      vy = -1.0f;
+      wz = 0.0f;
       break;
     case CMD_STOP:
     default:
@@ -631,12 +730,133 @@ void printStatus() {
   Serial.println(m3.out, 2);
 }
 
+bool imuWriteRegister(uint8_t reg, uint8_t value) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  Wire.write(value);
+  return Wire.endTransmission() == 0;
+}
+
+bool imuReadBytes(uint8_t reg, uint8_t count, uint8_t *buffer) {
+  Wire.beginTransmission(MPU6050_ADDR);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) {
+    return false;
+  }
+
+  uint8_t received = Wire.requestFrom((int)MPU6050_ADDR, (int)count, (int)true);
+  if (received != count) {
+    return false;
+  }
+
+  for (uint8_t i = 0; i < count; i++) {
+    buffer[i] = Wire.read();
+  }
+  return true;
+}
+
+int16_t imuWordAt(const uint8_t *buffer, uint8_t offset) {
+  return (int16_t)((buffer[offset] << 8) | buffer[offset + 1]);
+}
+
+void calibrateMotorUnitImuBias(size_t samples = 160) {
+  float sumX = 0.0f;
+  float sumY = 0.0f;
+  float sumZ = 0.0f;
+  uint8_t raw[14];
+  size_t validSamples = 0;
+
+  for (size_t i = 0; i < samples; i++) {
+    if (!imuReadBytes(REG_ACCEL_XOUT_H, sizeof(raw), raw)) {
+      delay(5);
+      continue;
+    }
+
+    sumX += (float)imuWordAt(raw, 8);
+    sumY += (float)imuWordAt(raw, 10);
+    sumZ += (float)imuWordAt(raw, 12);
+    validSamples++;
+    delay(4);
+  }
+
+  if (validSamples == 0) {
+    motorImuAvailable = false;
+    return;
+  }
+
+  motorImuGyroBiasX = sumX / (float)validSamples;
+  motorImuGyroBiasY = sumY / (float)validSamples;
+  motorImuGyroBiasZ = sumZ / (float)validSamples;
+}
+
+void setupMotorUnitImu() {
+  motorImuAvailable = false;
+
+  if (!imuWriteRegister(REG_PWR_MGMT_1, 0x00)) {
+    debugLog("MPU6050 not detected on I2C");
+    return;
+  }
+
+  delay(100);
+  imuWriteRegister(REG_SMPLRT_DIV, 0x07);
+  imuWriteRegister(REG_CONFIG, 0x03);
+  imuWriteRegister(REG_GYRO_CONFIG, 0x00);
+  imuWriteRegister(REG_ACCEL_CONFIG, 0x00);
+
+  calibrateMotorUnitImuBias();
+  motorImuHeadingDegrees = 0.0f;
+  motorImuPitchDegrees = 0.0f;
+  motorImuRollDegrees = 0.0f;
+  lastMotorImuReadUs = micros();
+  motorImuAvailable = true;
+  debugLog("MPU6050 motor-unit IMU ready");
+}
+
 void updateMotorUnitImu() {
-  // TODO: Read the ESP32-side motor-unit IMU here.
-  //
-  // This IMU should describe the motor/tip unit orientation used for haptic
-  // motor control. Do not use the Pi handle IMU here; that one is reserved for
-  // camera deblur/stabilization.
+  if (!motorImuAvailable) {
+    return;
+  }
+
+  uint8_t raw[14];
+  if (!imuReadBytes(REG_ACCEL_XOUT_H, sizeof(raw), raw)) {
+    motorImuAvailable = false;
+    debugLog("MPU6050 read failed; disabling motor-unit IMU");
+    return;
+  }
+
+  int16_t accelXRaw = imuWordAt(raw, 0);
+  int16_t accelYRaw = imuWordAt(raw, 2);
+  int16_t accelZRaw = imuWordAt(raw, 4);
+  int16_t gyroXRaw = imuWordAt(raw, 8);
+  int16_t gyroYRaw = imuWordAt(raw, 10);
+  int16_t gyroZRaw = imuWordAt(raw, 12);
+
+  float accelX = accelXRaw / MPU6050_ACCEL_LSB_PER_G;
+  float accelY = accelYRaw / MPU6050_ACCEL_LSB_PER_G;
+  float accelZ = accelZRaw / MPU6050_ACCEL_LSB_PER_G;
+
+  float gyroX = (gyroXRaw - motorImuGyroBiasX) / MPU6050_GYRO_LSB_PER_DPS;
+  float gyroY = (gyroYRaw - motorImuGyroBiasY) / MPU6050_GYRO_LSB_PER_DPS;
+  float gyroZ = (gyroZRaw - motorImuGyroBiasZ) / MPU6050_GYRO_LSB_PER_DPS;
+
+  unsigned long nowUs = micros();
+  float dt = lastMotorImuReadUs == 0 ? 0.01f : (nowUs - lastMotorImuReadUs) * 1e-6f;
+  lastMotorImuReadUs = nowUs;
+  dt = clampf(dt, 0.001f, 0.05f);
+
+  float accelRoll = atan2f(accelY, accelZ) * 180.0f / PI;
+  float accelPitch = atan2f(-accelX, sqrtf(accelY * accelY + accelZ * accelZ)) * 180.0f / PI;
+
+  motorImuRollDegrees =
+    MOTOR_IMU_COMPLEMENTARY_ALPHA * (motorImuRollDegrees + gyroX * dt)
+    + (1.0f - MOTOR_IMU_COMPLEMENTARY_ALPHA) * accelRoll;
+  motorImuPitchDegrees =
+    MOTOR_IMU_COMPLEMENTARY_ALPHA * (motorImuPitchDegrees + gyroY * dt)
+    + (1.0f - MOTOR_IMU_COMPLEMENTARY_ALPHA) * accelPitch;
+
+  motorImuHeadingDegrees += gyroZ * dt;
+  while (motorImuHeadingDegrees >= 360.0f) motorImuHeadingDegrees -= 360.0f;
+  while (motorImuHeadingDegrees < 0.0f) motorImuHeadingDegrees += 360.0f;
 }
 
 void sendMotorImuTelemetry() {
@@ -661,7 +881,7 @@ float readSensorDistanceCm(UltrasonicPins sensor) {
   delayMicroseconds(10);
   digitalWrite(sensor.trigger, LOW);
 
-  unsigned long durationMicros = pulseIn(sensor.echo, HIGH, 30000);
+  unsigned long durationMicros = pulseIn(sensor.echo, HIGH, ULTRASONIC_ECHO_TIMEOUT_US);
   if (durationMicros == 0) {
     return -1.0f;
   }
@@ -669,18 +889,41 @@ float readSensorDistanceCm(UltrasonicPins sensor) {
   return (durationMicros * 0.0343f) / 2.0f;
 }
 
-void updateUltrasonicSensors() {
+void recomputeNearestObstacle(unsigned long nowMs) {
   float bestDistance = -1.0f;
-  for (UltrasonicPins sensor : ultrasonicSensors) {
-    float candidate = readSensorDistanceCm(sensor);
+  for (size_t i = 0; i < ULTRASONIC_SENSOR_COUNT; i++) {
+    if (ultrasonicSampleAtMs[i] == 0 || (nowMs - ultrasonicSampleAtMs[i]) > ULTRASONIC_SAMPLE_STALE_MS) {
+      ultrasonicDistances[i] = -1.0f;
+      continue;
+    }
+
+    float candidate = ultrasonicDistances[i];
     if (candidate <= 0.0f) {
       continue;
     }
+
     if (bestDistance < 0.0f || candidate < bestDistance) {
       bestDistance = candidate;
     }
   }
+
   nearestObstacleCm = bestDistance;
+}
+
+void updateUltrasonicSensors(unsigned long nowMs) {
+  if ((nowMs - lastUltrasonicPollAtMs) < ULTRASONIC_POLL_INTERVAL_MS) {
+    return;
+  }
+
+  lastUltrasonicPollAtMs = nowMs;
+
+  UltrasonicPins sensor = ultrasonicSensors[nextUltrasonicSensorIndex];
+  float candidate = readSensorDistanceCm(sensor);
+  ultrasonicDistances[nextUltrasonicSensorIndex] = candidate;
+  ultrasonicSampleAtMs[nextUltrasonicSensorIndex] = nowMs;
+  nextUltrasonicSensorIndex = (nextUltrasonicSensorIndex + 1) % ULTRASONIC_SENSOR_COUNT;
+
+  recomputeNearestObstacle(nowMs);
 }
 
 void sendUltrasonicTelemetry() {
@@ -728,6 +971,10 @@ void handleRoot() {
   server.send_P(200, "text/html", INDEX_HTML);
 }
 
+void handleUpdatePage() {
+  server.send_P(200, "text/html", UPDATE_HTML);
+}
+
 void handleCmd() {
   if (server.hasArg("vx")) vx_cmd = clampf(server.arg("vx").toFloat(), -1.0f, 1.0f);
   if (server.hasArg("vy")) vy_cmd = clampf(server.arg("vy").toFloat(), -1.0f, 1.0f);
@@ -747,6 +994,54 @@ void handleStop() {
   lastCommandMs = millis();
   lastWebCommandMs = lastCommandMs;
   server.send(200, "text/plain", "STOPPED");
+}
+
+void handleUpdateUpload() {
+  HTTPUpload &upload = server.upload();
+
+  if (upload.status == UPLOAD_FILE_START) {
+    debugLog(String("OTA upload start: ") + upload.filename);
+    stopTargets();
+    if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+      Update.printError(Serial);
+    }
+    return;
+  }
+
+  if (upload.status == UPLOAD_FILE_WRITE) {
+    if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+      Update.printError(Serial);
+    }
+    return;
+  }
+
+  if (upload.status == UPLOAD_FILE_END) {
+    if (Update.end(true)) {
+      debugLog(String("OTA upload complete: ") + upload.totalSize + " bytes");
+    } else {
+      Update.printError(Serial);
+    }
+    return;
+  }
+
+  if (upload.status == UPLOAD_FILE_ABORTED) {
+    Update.end();
+    debugLog("OTA upload aborted");
+  }
+}
+
+void handleUpdateResult() {
+  bool success = !Update.hasError();
+  server.send(
+    success ? 200 : 500,
+    "text/plain",
+    success ? "Update successful. Rebooting..." : "Update failed."
+  );
+
+  if (success) {
+    delay(300);
+    ESP.restart();
+  }
 }
 
 void startWiFiAP() {
@@ -769,6 +1064,8 @@ void setupWeb() {
   server.on("/", HTTP_GET, handleRoot);
   server.on("/cmd", HTTP_GET, handleCmd);
   server.on("/stop", HTTP_GET, handleStop);
+  server.on("/update", HTTP_GET, handleUpdatePage);
+  server.on("/update", HTTP_POST, handleUpdateResult, handleUpdateUpload);
   server.begin();
   debugLog("Web server started");
 }
@@ -811,6 +1108,7 @@ void setup() {
   motorOff(m1);
   motorOff(m2);
   motorOff(m3);
+  setupMotorUnitImu();
 
   startWiFiAP();
   setupWeb();
@@ -822,12 +1120,12 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  handleSerialInput();
   bool rcOverride = webControlActive();
 
   if (!rcOverride) {
-    handleSerialInput();
     updateMotorUnitImu();
-    updateUltrasonicSensors();
+    updateUltrasonicSensors(millis());
   }
 
   unsigned long nowMs = millis();

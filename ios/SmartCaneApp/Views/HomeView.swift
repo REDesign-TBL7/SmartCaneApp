@@ -28,9 +28,8 @@ struct HomeView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
-                        liveGuidanceSection
-                        navigationSection
-                        vlmSection
+                        primaryActionsSection
+                        diagnosticsShortcutSection
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
@@ -124,45 +123,16 @@ struct HomeView: View {
         }
     }
 
-    private var navigationSection: some View {
+    private var primaryActionsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
+            Text("Main actions")
+                .font(.headline.weight(.bold))
             connectionButton
             navigationButton
-            demoStatusStrip
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.white.opacity(0.55), lineWidth: 1)
-        )
-    }
-
-    private var liveGuidanceSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Short-range obstacle avoidance")
-                .font(.headline.weight(.bold))
-
-            Text(fusionManager.guidanceHeadline)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(fusionManager.isImmediateStopRecommended ? Color.red.opacity(0.88) : Color.primary)
-
-            Text(fusionManager.guidanceDetail)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(alignment: .leading, spacing: 10) {
-                demoValueRow("Obstacle", connectionManager.caneState.obstacleMessage)
-                demoValueRow("Navigation", locationManager.currentInstruction)
-                demoValueRow("Hazard ID", visionManager.latestHazardAssessment)
-                demoValueRow("Traffic Light", visionManager.latestTrafficLightAssessment)
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.70), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(Color.white.opacity(0.55), lineWidth: 1)
@@ -200,11 +170,11 @@ struct HomeView: View {
             toggleDemoConnection()
         } label: {
             primaryActionLabel(
-                connectionManager.caneState.connectionStatus.rawValue,
+                connectionManager.caneState.connectionStatus == .connected ? "Disconnect cane" : "Connect cane",
                 systemImage: connectionManager.caneState.connectionStatus == .connected ? "wifi" : "wifi.slash",
                 detail: connectionManager.caneState.connectionStatus == .connected
-                    ? "Tap to disconnect from \(connectionManager.activeEndpointLabel)."
-                    : connectionManager.caneState.statusMessage
+                    ? "Connected to \(connectionManager.activeEndpointLabel)."
+                    : "Use this to connect over the saved hotspot and Pi link."
             )
         }
         .buttonStyle(.plain)
@@ -217,9 +187,9 @@ struct HomeView: View {
             showsNavigationSearch = true
         } label: {
             primaryActionLabel(
-                locationManager.hasActiveNavigation ? locationManager.navigationStatusValue : "No current navigation",
+                locationManager.hasActiveNavigation ? "Change destination" : "Choose destination",
                 systemImage: locationManager.hasActiveNavigation ? "location.fill" : "magnifyingglass",
-                detail: locationManager.hasActiveNavigation ? "Tap to change destination." : "Tap to search for a destination."
+                detail: locationManager.hasActiveNavigation ? locationManager.navigationStatusValue : "Search for where to go."
             )
         }
         .buttonStyle(.plain)
@@ -227,22 +197,15 @@ struct HomeView: View {
         .accessibilityHint(locationManager.hasActiveNavigation ? "Double-tap to change destination." : "Double-tap to search for a destination.")
     }
 
-    private var vlmSection: some View {
+    private var diagnosticsShortcutSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("FastVLM now backs up the ultrasonic obstacle sensor and checks crossing lights, while the cane keeps turn guidance active.")
+            Text("More")
+                .font(.headline.weight(.bold))
+
+            Text("Detailed obstacle status, camera analysis, BLE state, and logs are kept in Diagnostics.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-
-            NavigationLink(destination: CVModelView()) {
-                Text("Open FastVLM view")
-                    .font(.headline.weight(.semibold))
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(Color.white.opacity(0.82), in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Open FastVLM view")
-            .accessibilityHint("Opens live scene understanding output from Pi camera frames.")
 
             NavigationLink(destination: DiagnosticsView()) {
                 Text("Open diagnostics")
@@ -261,25 +224,6 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(Color.white.opacity(0.55), lineWidth: 1)
         )
-    }
-
-    private var demoStatusStrip: some View {
-        HStack(spacing: 10) {
-            demoChip(
-                title: "Obstacle",
-                value: connectionManager.caneState.nearestObstacleCm >= 0
-                    ? "\(Int(connectionManager.caneState.nearestObstacleCm)) cm"
-                    : "No sensor"
-            )
-            demoChip(
-                title: "Mode",
-                value: fusionManager.isImmediateStopRecommended ? "Stop" : visionManager.latestInferenceMode
-            )
-            demoChip(
-                title: "Traffic",
-                value: shortTrafficStatus
-            )
-        }
     }
 
     private func toggleDemoConnection() {
@@ -302,49 +246,6 @@ struct HomeView: View {
             : "Say connect cane after turning on Personal Hotspot."
         let summary = "\(pairing) Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased()). \(fusionManager.demoNarrative) \(connectionCommand)"
         speechManager.speak(summary, interrupt: true, force: true)
-    }
-
-    private var shortTrafficStatus: String {
-        let traffic = visionManager.latestTrafficLightAssessment
-        if traffic == "No traffic signal visible." {
-            return "None"
-        }
-        if traffic.contains("Green") {
-            return "Green"
-        }
-        if traffic.contains("Red") {
-            return "Red"
-        }
-        if traffic.contains("Amber") {
-            return "Amber"
-        }
-        return "Seen"
-    }
-
-    private func demoChip(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.caption.weight(.bold))
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private func demoValueRow(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.subheadline)
-                .fixedSize(horizontal: false, vertical: true)
-        }
     }
 
     private var readMenuButton: some View {
@@ -407,7 +308,6 @@ private struct ConnectionAssistantSheet: View {
 
                     assistantStatusCard
                     assistantProvisionCard
-                    assistantConnectionLogsCard
                 }
                 .padding(16)
             }
@@ -527,46 +427,6 @@ private struct ConnectionAssistantSheet: View {
         )
     }
 
-    private var assistantConnectionLogsCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Recent phone to Pi logs")
-                .font(.subheadline.weight(.semibold))
-
-            if assistantConnectionLogs.isEmpty {
-                Text("No recent connection logs yet.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(assistantConnectionLogs) { entry in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("[\(entry.timestampLabel)] \(entry.subsystem)")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text(entry.message)
-                            .font(.footnote.monospaced())
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-        .padding(18)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.55), lineWidth: 1)
-        )
-    }
-
-    private var assistantConnectionLogs: [DebugLogEntry] {
-        let allowedSubsystems = Set(["connection", "bonjour", "pairing", "socket", "ble", "network"])
-        return connectionManager.debugLogEntries
-            .filter { allowedSubsystems.contains($0.subsystem) }
-            .prefix(8)
-            .map { $0 }
-    }
-
     private func assistantValueRow(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
@@ -583,16 +443,18 @@ private struct DiagnosticsView: View {
     @EnvironmentObject private var connectionManager: CaneConnectionManager
     @EnvironmentObject private var locationManager: LocationManager
     @EnvironmentObject private var visionManager: VisionManager
+    @EnvironmentObject private var fusionManager: GuidanceFusionManager
     @EnvironmentObject private var bleDiagnosticsManager: BLEDiagnosticsManager
+    @State private var showsDebugLogs = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 14) {
                 diagnosticsOverviewCard
+                diagnosticsObstacleCard
                 diagnosticsBLECard
-                diagnosticsLogSection(title: "Phone to Pi logs", entries: connectionManager.debugLogEntries)
-                diagnosticsLogSection(title: "Navigation logs", entries: locationManager.debugLogEntries)
-                diagnosticsLogSection(title: "Vision logs", entries: visionManager.debugLogEntries)
+                diagnosticsVisionCard
+                advancedLogsSection
             }
             .padding(16)
         }
@@ -683,6 +545,72 @@ private struct DiagnosticsView: View {
             }
             .buttonStyle(.plain)
             .disabled(bleDiagnosticsManager.isReadingDetailedStatus)
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private var diagnosticsObstacleCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Short-range obstacle avoidance")
+                .font(.subheadline.weight(.semibold))
+            diagnosticsValueRow("Guidance", fusionManager.guidanceHeadline)
+            diagnosticsValueRow("Detail", fusionManager.guidanceDetail)
+            diagnosticsValueRow("Obstacle", connectionManager.caneState.obstacleMessage)
+            diagnosticsValueRow("Navigation cue", locationManager.currentInstruction)
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private var diagnosticsVisionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Vision status")
+                .font(.subheadline.weight(.semibold))
+            diagnosticsValueRow("Hazard", visionManager.latestHazardAssessment)
+            diagnosticsValueRow("Traffic light", visionManager.latestTrafficLightAssessment)
+            diagnosticsValueRow("Mode", visionManager.latestInferenceMode)
+
+            NavigationLink(destination: CVModelView()) {
+                Text("Open vision summary")
+                    .font(.headline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.white.opacity(0.82), in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private var advancedLogsSection: some View {
+        DisclosureGroup(isExpanded: $showsDebugLogs) {
+            VStack(alignment: .leading, spacing: 14) {
+                diagnosticsLogSection(title: "Phone to Pi logs", entries: connectionManager.debugLogEntries)
+                diagnosticsLogSection(title: "Navigation logs", entries: locationManager.debugLogEntries)
+                diagnosticsLogSection(title: "Vision logs", entries: visionManager.debugLogEntries)
+            }
+            .padding(.top, 8)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Advanced logs")
+                    .font(.subheadline.weight(.semibold))
+                Text("Hidden by default for the demo. Expand only when you need debugging.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(18)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))

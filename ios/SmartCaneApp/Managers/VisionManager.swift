@@ -85,7 +85,10 @@ final class VisionManager: ObservableObject {
             latestHazardAssessment = "No confirmed hazard"
             latestTrafficLightAssessment = "No traffic signal visible."
             latestInferenceMode = "Idle"
-            publishSceneSummary("VLM idle")
+            publishSceneSummary("WebSocket not connected")
+            latestRawModelOutput = "WebSocket not connected"
+            latestFramePreview = nil
+            latestFrameByteCount = 0
             latestHazardTags = []
             appendDebugLog("vision", "Inference disabled")
         }

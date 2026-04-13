@@ -163,7 +163,7 @@ final class GuidanceFusionManager: ObservableObject {
             return (.stop, instructionText)
         }
 
-        if isImmediateStopRecommended || caneState.faultCode != .none {
+        if isImmediateStopRecommended || caneState.faultCode.isBlockingMotionFault {
             return (.stop, "Stopping for safety")
         }
 

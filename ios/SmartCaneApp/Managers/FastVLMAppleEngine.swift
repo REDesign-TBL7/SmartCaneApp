@@ -17,17 +17,18 @@ enum FastVLMInferenceTask: Sendable {
         switch self {
         case .sceneDescription:
             return """
-            Describe only the visible scene in this camera frame.
-            Mention concrete objects and layout that are actually visible.
-            Do not guess or invent details.
-            If the image is unclear, say exactly "Unclear image."
+            Describe only the clearly visible foreground scene directly ahead.
+            Prefer the nearest objects and walking path over background scenery.
+            Do not guess, do not invent people, and do not describe distant buildings or trees unless they dominate the frame.
+            If the image is unclear or uncertain, say exactly "Unclear image."
             Answer in one short sentence.
             """
         case .hazardClassification(let obstacleDistanceCm):
             return """
             The ultrasonic sensor reports an obstacle about \(obstacleDistanceCm) cm ahead.
-            Identify the visible object directly ahead that may match this obstacle reading.
-            Mention only what is clearly visible in front of the user.
+            Identify only the nearest foreground object near the center of the frame that may match this obstacle reading.
+            Prefer simple labels like "person ahead", "chair ahead", "wall ahead", "door ahead", or "pole ahead".
+            Ignore distant background scenery such as buildings, trees, road surface, sky, or horizon unless it is clearly the nearby obstacle.
             If no clear obstacle is visible, say exactly "Obstacle not visually confirmed."
             Answer in one short sentence.
             """
@@ -156,16 +157,46 @@ actor FastVLMAppleEngine: FastVLMEngine {
             }
             return "No traffic signal visible."
         case .hazardClassification:
-            let banned = [
+            let backgroundTerms = [
+                "building",
+                "concrete building",
                 "tree",
+                "green tree",
                 "construction site",
-                "sudden changes in direction",
+                "sky",
+                "horizon",
+                "cloud",
+                "road",
+                "street",
+                "intersection",
             ]
-            if banned.contains(where: { lowered == $0 || lowered.contains("green tree") }) {
+            let likelyForegroundTerms = [
+                "person",
+                "pedestrian",
+                "chair",
+                "table",
+                "wall",
+                "door",
+                "doorway",
+                "pole",
+                "bollard",
+                "stairs",
+                "curb",
+                "car",
+                "bike",
+                "box",
+                "bin",
+                "sign",
+            ]
+            if backgroundTerms.contains(where: lowered.contains),
+               !likelyForegroundTerms.contains(where: lowered.contains) {
                 return "Obstacle not visually confirmed."
             }
             return normalized
         case .sceneDescription:
+            if lowered.contains("concrete building") || lowered.contains("construction site") {
+                return "Unclear image."
+            }
             return normalized
         }
     }

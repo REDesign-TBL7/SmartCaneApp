@@ -473,6 +473,8 @@ final class LocationManager: NSObject, ObservableObject {
         currentRouteSummary = "Route pending"
         hasRecordedDistanceForCurrentTrip = false
         appendDebugLog("navigation", "Activated destination \(destination.displayName)")
+        appendDebugLog("navigation", "Sending immediate FORWARD cue while route details load")
+        fusionManager.applyFusedCommand(baseCommand: .forward, instructionText: currentInstruction)
         profileManager.incrementTripCount()
         insertRecentRoute(for: destination)
     }
@@ -485,6 +487,7 @@ final class LocationManager: NSObject, ObservableObject {
         guard let currentLocationCoordinate else {
             currentInstruction = "Waiting for your current location."
             appendDebugLog("routing", "Route update waiting for current location")
+            fusionManager.applyFusedCommand(baseCommand: .forward, instructionText: "Navigating to \(destination.name)")
             return
         }
 
@@ -581,22 +584,39 @@ final class LocationManager: NSObject, ObservableObject {
     private func commandForInstruction(_ instruction: String) -> NavigationCommand {
         let lowercaseInstruction = instruction.lowercased()
 
-        if lowercaseInstruction.contains("left") {
+        if lowercaseInstruction.contains("u-turn") || lowercaseInstruction.contains("uturn") {
             return .left
         }
 
-        if lowercaseInstruction.contains("right") {
+        if lowercaseInstruction.contains("slight left")
+            || lowercaseInstruction.contains("keep left")
+            || lowercaseInstruction.contains("bear left")
+            || lowercaseInstruction.contains("turn left")
+            || lowercaseInstruction.contains("left") {
+            return .left
+        }
+
+        if lowercaseInstruction.contains("slight right")
+            || lowercaseInstruction.contains("keep right")
+            || lowercaseInstruction.contains("bear right")
+            || lowercaseInstruction.contains("turn right")
+            || lowercaseInstruction.contains("right") {
             return .right
         }
 
         if lowercaseInstruction.contains("continue")
             || lowercaseInstruction.contains("straight")
             || lowercaseInstruction.contains("head")
-            || lowercaseInstruction.contains("proceed") {
+            || lowercaseInstruction.contains("proceed")
+            || lowercaseInstruction.contains("walk")
+            || lowercaseInstruction.contains("go")
+            || lowercaseInstruction.contains("toward")
+            || lowercaseInstruction.contains("towards") {
             return .forward
         }
 
-        if let currentLocationCoordinate,
+        if connectionManager.caneState.isMotorUnitIMUAvailable,
+           let currentLocationCoordinate,
            let activeDestination {
             let desiredBearing = bearingDegrees(from: currentLocationCoordinate, to: activeDestination.coordinate)
             let delta = normalizedBearingDelta(
@@ -613,6 +633,15 @@ final class LocationManager: NSObject, ObservableObject {
             }
         }
 
+        if lowercaseInstruction.contains("arrive")
+            || lowercaseInstruction.contains("destination")
+            || lowercaseInstruction.contains("stop") {
+            return .stop
+        }
+
+        // Without a real heading source, avoid inventing left/right pulls from
+        // cardinal instructions like "Head north". Forward is safer than an
+        // arbitrary turn when the route step is non-directional.
         return .forward
     }
 

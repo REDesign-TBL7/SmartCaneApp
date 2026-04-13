@@ -29,11 +29,31 @@ class CameraStreamer:
         self.available = Picamera2 is not None
         self.picam = None
         self._last_init_attempt_monotonic = 0.0
-        self._retry_interval_seconds = 5.0
+        self._retry_interval_seconds = 1.0
         self._cli_capture_cmd = self._detect_cli_capture_cmd()
         self._cli_capture_run_as_pi = self._should_run_cli_as_pi()
 
         self._ensure_camera_ready(force=True)
+
+    @staticmethod
+    def _rotate_image_for_vision(image: Image.Image) -> Image.Image:
+        # The physical Pi camera is mounted sideways relative to the phone UI.
+        # Rotate once here so both the preview and VLM see the same upright frame.
+        return image.rotate(-90, expand=True)
+
+    def _encode_image_to_base64_jpeg(self, image: Image.Image) -> str:
+        rotated = self._rotate_image_for_vision(image)
+        if rotated.mode != "RGB":
+            rotated = rotated.convert("RGB")
+        buffer = io.BytesIO()
+        rotated.save(
+            buffer,
+            format="JPEG",
+            quality=self.jpeg_quality,
+            optimize=False,
+            subsampling=2,
+        )
+        return base64.b64encode(buffer.getvalue()).decode("ascii")
 
     @staticmethod
     def _should_run_cli_as_pi() -> bool:
@@ -85,20 +105,6 @@ class CameraStreamer:
             self.available = False
             return False
 
-    @staticmethod
-    def _normalize_frame_for_jpeg(frame: Any) -> Any:
-        shape = getattr(frame, "shape", None)
-        if not shape or len(shape) != 3 or shape[2] < 3:
-            return frame
-
-        # Picamera2 preview frames can arrive in BGR/XBGR order even when the
-        # requested format is RGB-like. Swap into RGB before JPEG encoding.
-        if shape[2] == 3:
-            return frame[:, :, [2, 1, 0]]
-        if shape[2] >= 4:
-            return frame[:, :, [2, 1, 0, 3]]
-        return frame
-
         if self.picam is not None:
             self.available = True
             return True
@@ -125,6 +131,20 @@ class CameraStreamer:
             self.available = False
             self.picam = None
             return False
+
+    @staticmethod
+    def _normalize_frame_for_jpeg(frame: Any) -> Any:
+        shape = getattr(frame, "shape", None)
+        if not shape or len(shape) != 3 or shape[2] < 3:
+            return frame
+
+        # Picamera2 preview frames can arrive in BGR/XBGR order even when the
+        # requested format is RGB-like. Swap into RGB before JPEG encoding.
+        if shape[2] == 3:
+            return frame[:, :, [2, 1, 0]]
+        if shape[2] >= 4:
+            return frame[:, :, [2, 1, 0, 3]]
+        return frame
 
     def _capture_frame_via_cli(self) -> str | None:
         if self._cli_capture_cmd is None:
@@ -174,7 +194,13 @@ class CameraStreamer:
 
         self.available = True
         logger.info("Camera CLI capture initialized at %sx%s", self.width, self.height)
-        return base64.b64encode(frame_bytes).decode("ascii")
+        try:
+            image = Image.open(io.BytesIO(frame_bytes))
+            image.load()
+        except Exception as exc:
+            logger.warning("CLI camera capture returned unreadable JPEG: %s", exc)
+            return None
+        return self._encode_image_to_base64_jpeg(image)
 
     def next_frame_base64(self) -> str | None:
         if not self._ensure_camera_ready():
@@ -193,11 +219,7 @@ class CameraStreamer:
             return None
         frame = self._normalize_frame_for_jpeg(frame)
         image = Image.fromarray(frame)
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-        buffer = io.BytesIO()
-        image.save(buffer, format="JPEG", quality=self.jpeg_quality, optimize=False, subsampling=2)
-        return base64.b64encode(buffer.getvalue()).decode("ascii")
+        return self._encode_image_to_base64_jpeg(image)
 
     def frame_packet(self, handle_imu_sample: dict[str, Any] | None = None) -> dict[str, object] | None:
         encoded = self.next_frame_base64()

@@ -23,24 +23,6 @@ final class CaneConnectionManager: ObservableObject {
         let handleImuGyroZDegreesPerSecond: Double?
     }
 
-    private final class ProbeCompletionGate: @unchecked Sendable {
-        private let lock = NSLock()
-        private var didFinish = false
-
-        func claim() -> Bool {
-            lock.lock()
-            defer { lock.unlock() }
-
-            guard !didFinish else {
-                return false
-            }
-
-            didFinish = true
-            return true
-        }
-    }
-
-
     private enum PairingError: LocalizedError {
         case invalidURL
         case handshakeTimedOut
@@ -78,6 +60,8 @@ final class CaneConnectionManager: ObservableObject {
     private let mdnsRuntimeHost = "smartcane-pi.local"
     private let bonjourServiceType = "_smartcane._tcp."
     private let provisionalDeviceID = "smartcane-hotspot-client"
+    private let pairInfoTimeoutSeconds = 2.5
+    private let connectRetryRounds = 2
 
     private var currentEndpoint: EndpointProfile?
     private var webSocketTask: URLSessionWebSocketTask?
@@ -85,10 +69,12 @@ final class CaneConnectionManager: ObservableObject {
     private var connectTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
     private var receiveTask: Task<Void, Never>?
+    private var reconnectTask: Task<Void, Never>?
     private var frameHandler: ((FrameSample) -> Void)?
     private var savedRouteCommand: (command: NavigationCommand, instructionText: String)?
     private var isSafetyOverrideActive = false
     private var isVisionSafetyOverrideActive = false
+    private var isManualDisconnect = false
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var latestPhoneLocation: (latitude: Double, longitude: Double)?
@@ -155,6 +141,7 @@ final class CaneConnectionManager: ObservableObject {
 
     @discardableResult
     func connectToCane() -> Bool {
+        isManualDisconnect = false
         guard webSocketTask == nil, connectTask == nil else {
             appendDebugLog("connection", "Connect ignored because a session is already active")
             return false
@@ -187,9 +174,13 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     func disconnectFromCane() {
+        isManualDisconnect = true
         appendDebugLog("connection", "Disconnect requested")
         connectTask?.cancel()
         connectTask = nil
+
+        reconnectTask?.cancel()
+        reconnectTask = nil
 
         heartbeatTask?.cancel()
         heartbeatTask = nil
@@ -402,7 +393,7 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     private var shouldForceStopForImmediateSafety: Bool {
-        if caneState.faultCode != .none {
+        if caneState.faultCode.isBlockingMotionFault {
             return true
         }
 
@@ -423,50 +414,58 @@ final class CaneConnectionManager: ObservableObject {
         )
 
         var lastError: Error?
-        for endpoint in candidates {
-            appendDebugLog("connection", "Connecting to runtime at \(endpoint.host):\(endpoint.port)\(endpoint.path)")
-            do {
-                let established = try await establishRuntimeSession(
-                    to: endpoint,
-                    expectedDeviceID: expectedDeviceID,
-                    pairedAt: pairedAt
-                )
-                savePairedDevice(established.pairedDevice)
-                adoptOpenWebSocket(
-                    session: established.session,
-                    task: established.task,
-                    endpoint: established.endpoint
-                )
-                connectTask = nil
-                return
-            } catch {
-                lastError = error
-                appendDebugLog("connection", "Runtime connection failed at \(endpoint.host): \(error.localizedDescription)")
+        for round in 1...connectRetryRounds {
+            if round > 1 {
+                caneState.statusMessage = "Retrying Pi connection..."
+                appendDebugLog("connection", "Retrying runtime connection round \(round)")
+                try? await Task.sleep(nanoseconds: 500_000_000)
             }
-        }
 
-        if let bonjourEndpoint = await discoverBonjourEndpoint(excluding: candidates.map(\.host)) {
-            appendDebugLog("bonjour", "Resolved Bonjour runtime at \(bonjourEndpoint.host):\(bonjourEndpoint.port)\(bonjourEndpoint.path)")
-            do {
-                let established = try await establishRuntimeSession(
-                    to: bonjourEndpoint,
-                    expectedDeviceID: expectedDeviceID,
-                    pairedAt: pairedAt
-                )
-                savePairedDevice(established.pairedDevice)
-                adoptOpenWebSocket(
-                    session: established.session,
-                    task: established.task,
-                    endpoint: established.endpoint
-                )
-                connectTask = nil
-                return
-            } catch {
-                lastError = error
-                appendDebugLog("bonjour", "Bonjour runtime connection failed: \(error.localizedDescription)")
+            for endpoint in candidates {
+                appendDebugLog("connection", "Connecting to runtime at \(endpoint.host):\(endpoint.port)\(endpoint.path)")
+                do {
+                    let established = try await establishRuntimeSession(
+                        to: endpoint,
+                        expectedDeviceID: expectedDeviceID,
+                        pairedAt: pairedAt
+                    )
+                    savePairedDevice(established.pairedDevice)
+                    adoptOpenWebSocket(
+                        session: established.session,
+                        task: established.task,
+                        endpoint: established.endpoint
+                    )
+                    connectTask = nil
+                    return
+                } catch {
+                    lastError = error
+                    appendDebugLog("connection", "Runtime connection failed at \(endpoint.host): \(error.localizedDescription)")
+                }
             }
-        } else {
-            appendDebugLog("bonjour", "No Bonjour runtime service resolved")
+
+            if let bonjourEndpoint = await discoverBonjourEndpoint(excluding: candidates.map(\.host)) {
+                appendDebugLog("bonjour", "Resolved Bonjour runtime at \(bonjourEndpoint.host):\(bonjourEndpoint.port)\(bonjourEndpoint.path)")
+                do {
+                    let established = try await establishRuntimeSession(
+                        to: bonjourEndpoint,
+                        expectedDeviceID: expectedDeviceID,
+                        pairedAt: pairedAt
+                    )
+                    savePairedDevice(established.pairedDevice)
+                    adoptOpenWebSocket(
+                        session: established.session,
+                        task: established.task,
+                        endpoint: established.endpoint
+                    )
+                    connectTask = nil
+                    return
+                } catch {
+                    lastError = error
+                    appendDebugLog("bonjour", "Bonjour runtime connection failed: \(error.localizedDescription)")
+                }
+            } else {
+                appendDebugLog("bonjour", "No Bonjour runtime service resolved")
+            }
         }
 
         caneState.connectionStatus = .disconnected
@@ -484,11 +483,6 @@ final class CaneConnectionManager: ObservableObject {
     ) async throws -> EstablishedSession {
         guard let url = makeWebSocketURL(for: endpoint) else {
             throw PairingError.invalidURL
-        }
-
-        appendDebugLog("connection", "Probing \(endpoint.host):\(endpoint.port)")
-        guard await probeEndpoint(endpoint) else {
-            throw PairingError.handshakeTimedOut
         }
 
         let session = URLSession(configuration: makeLocalNetworkConfiguration())
@@ -534,7 +528,7 @@ final class CaneConnectionManager: ObservableObject {
     }
 
     private func receivePairInfo(on task: URLSessionWebSocketTask) async throws -> InboundPairInfoMessage {
-        let deadline = Date().addingTimeInterval(5.0)
+        let deadline = Date().addingTimeInterval(pairInfoTimeoutSeconds)
 
         while Date() < deadline {
             let secondsRemaining = max(0.1, deadline.timeIntervalSinceNow)
@@ -636,10 +630,56 @@ final class CaneConnectionManager: ObservableObject {
                     self.caneState.faultCode = .heartbeatTimeout
                     self.caneState.statusMessage = "Connection dropped: \(error.localizedDescription)"
                     self.appendDebugLog("socket", "Receive failed: \(error.localizedDescription)")
-                    self.disconnectFromCane()
+                    self.handleUnexpectedDisconnect()
                     return
                 }
             }
+        }
+    }
+
+    private func handleUnexpectedDisconnect() {
+        let shouldReconnect = !isManualDisconnect
+        let reconnectCandidates = connectionCandidates()
+
+        connectTask?.cancel()
+        connectTask = nil
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+        receiveTask?.cancel()
+        receiveTask = nil
+
+        webSocketTask?.cancel(with: .goingAway, reason: nil)
+        webSocketTask = nil
+        urlSession = nil
+        currentEndpoint = nil
+
+        caneState.connectionStatus = .disconnected
+        caneState.currentNavigationCommand = .stop
+        pendingPingStartedAt = nil
+        lastPingRoundTripMs = nil
+
+        guard shouldReconnect, !reconnectCandidates.isEmpty else {
+            caneState.statusMessage = Self.disconnectedStatusMessage(for: pairedDevice)
+            return
+        }
+
+        caneState.statusMessage = "Connection dropped. Reconnecting to Pi..."
+        appendDebugLog("connection", "Scheduling automatic reconnect after unexpected disconnect")
+
+        reconnectTask?.cancel()
+        reconnectTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            guard let self, !Task.isCancelled else {
+                return
+            }
+
+            await MainActor.run {
+                self.reconnectTask = nil
+                self.isManualDisconnect = false
+                self.caneState.connectionStatus = .connecting
+            }
+
+            await self.connectToRuntime(reconnectCandidates)
         }
     }
 
@@ -775,11 +815,15 @@ final class CaneConnectionManager: ObservableObject {
         task: URLSessionWebSocketTask,
         endpoint: EndpointProfile
     ) {
+        isManualDisconnect = false
+        reconnectTask?.cancel()
+        reconnectTask = nil
         urlSession = session
         webSocketTask = task
         currentEndpoint = endpoint
 
         caneState.connectionStatus = .connected
+        caneState.faultCode = .none
         caneState.statusMessage = connectionStatusSummary(connectedTo: endpoint)
 
         if endpoint.host == "192.168.4.1" {
@@ -788,56 +832,6 @@ final class CaneConnectionManager: ObservableObject {
         }
         startReceiveLoop()
         startHeartbeatLoop()
-    }
-
-    private func probeEndpoint(_ endpoint: EndpointProfile) async -> Bool {
-        await withCheckedContinuation { continuation in
-            guard let port = UInt16(endpoint.port),
-                  let nwPort = NWEndpoint.Port(rawValue: port) else {
-                continuation.resume(returning: false)
-                return
-            }
-
-            let connection = NWConnection(
-                host: NWEndpoint.Host(endpoint.host),
-                port: nwPort,
-                using: .tcp
-            )
-
-            let queue = DispatchQueue(label: "smartcane.endpoint.probe")
-            let finishGate = ProbeCompletionGate()
-
-            let timeoutWork = DispatchWorkItem {
-                guard finishGate.claim() else {
-                    return
-                }
-                connection.cancel()
-                continuation.resume(returning: false)
-            }
-
-            connection.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    guard finishGate.claim() else {
-                        return
-                    }
-                    timeoutWork.cancel()
-                    connection.cancel()
-                    continuation.resume(returning: true)
-                case .failed, .cancelled:
-                    guard finishGate.claim() else {
-                        return
-                    }
-                    timeoutWork.cancel()
-                    continuation.resume(returning: false)
-                default:
-                    break
-                }
-            }
-
-            connection.start(queue: queue)
-            queue.asyncAfter(deadline: .now() + 3.0, execute: timeoutWork)
-        }
     }
 
     private func send(_ payload: OutboundCaneMessage) {
@@ -893,7 +887,7 @@ final class CaneConnectionManager: ObservableObject {
         config.allowsCellularAccess = true
         config.allowsConstrainedNetworkAccess = true
         config.allowsExpensiveNetworkAccess = true
-        config.waitsForConnectivity = true
+        config.waitsForConnectivity = false
         return config
     }
 
@@ -925,6 +919,15 @@ final class CaneConnectionManager: ObservableObject {
             candidates.append(endpoint)
         }
 
+        appendCandidate(
+            EndpointProfile(
+                host: mdnsRuntimeHost,
+                port: runtimePort,
+                path: runtimePath,
+                label: pairedDevice?.deviceName ?? "SmartCane"
+            )
+        )
+
         if let pairedDevice {
             appendCandidate(
                 EndpointProfile(
@@ -935,15 +938,6 @@ final class CaneConnectionManager: ObservableObject {
                 )
             )
         }
-
-        appendCandidate(
-            EndpointProfile(
-                host: mdnsRuntimeHost,
-                port: runtimePort,
-                path: runtimePath,
-                label: pairedDevice?.deviceName ?? "SmartCane"
-            )
-        )
 
         return candidates
     }
@@ -1033,6 +1027,17 @@ final class CaneConnectionManager: ObservableObject {
             return nil
         }
         return deviceID
+    }
+}
+
+extension CaneFaultCode {
+    var isBlockingMotionFault: Bool {
+        switch self {
+        case .none, .imuUnavailable, .handleIMUUnavailable, .motorIMUUnavailable, .gpsUnavailable, .ultrasonicFault:
+            return false
+        case .motorDriverFault, .heartbeatTimeout:
+            return true
+        }
     }
 }
 

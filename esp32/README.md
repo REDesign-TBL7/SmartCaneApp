@@ -38,6 +38,15 @@ PASS: 12345678
 URL:  http://192.168.4.1
 ```
 
+Wi-Fi firmware update is also enabled on the same AP:
+
+```text
+URL: http://192.168.4.1/update
+```
+
+Use that page to upload the compiled `.bin` firmware image and reboot the board
+without USB reflashing.
+
 That page is intentionally kept aligned with the standalone reference sketch:
 
 - move joystick
@@ -56,10 +65,16 @@ MOTOR_IMU <available> <headingDegrees> <pitchDegrees> <rollDegrees>
 ULTRASONIC <nearestObstacleCm>
 ```
 
-The sketch currently includes the telemetry hook and a TODO inside
-`updateMotorUnitImu()`. Wire the real ESP32 IMU driver there once the exact IMU
-sensor/library is finalized. Do not use the Pi handle IMU for motor-unit heading;
-that handle IMU is reserved for camera deblur/stabilization.
+The motor-unit IMU is now implemented for an `MPU6050` on the ESP32 I2C bus.
+The sketch wakes and configures the MPU6050 directly over `Wire`, calibrates
+gyro bias at startup, and reports:
+
+- integrated yaw/heading from gyro Z
+- complementary-filter pitch
+- complementary-filter roll
+
+Do not use the Pi handle IMU for motor-unit heading; that handle IMU is
+reserved for camera deblur/stabilization.
 
 Current IMU wiring:
 
@@ -67,6 +82,14 @@ Current IMU wiring:
 - `GPIO39` = SCL
 - `3.3V` = VCC
 - `GND` = GND
+- MPU6050 default I2C address = `0x68`
+
+Important MPU6050 note:
+
+- heading is gyro-integrated and will drift over time because the MPU6050 does
+  not provide a magnetometer
+- this is acceptable for short demo steering cues, but not as a long-duration
+  absolute compass
 
 Upload `motor_controller/motor_controller.ino` to the ESP32. The sketch keeps
 the original DRV8313 6-step commutation pattern, but now uses the tuned
@@ -88,8 +111,8 @@ Important calibration note:
 The current serial command mapping is translated onto the omni-drive mixer:
 
 - `FORWARD`: mapped to forward translation
-- `LEFT`: mapped to positive rotation
-- `RIGHT`: mapped to negative rotation
+- `LEFT`: mapped to leftward translation / pull
+- `RIGHT`: mapped to rightward translation / pull
 - `STOP`: all motor phases off
 
 If wheel directions are inverted, flip `INVERT_M1`, `INVERT_M2`, and
