@@ -287,13 +287,16 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="card">
       <h3>Speed Tuning</h3>
       <div class="slider-row">
-        <label><span>Translate speed</span><span id="translateValue">0.65</span></label>
-        <input id="translateScale" type="range" min="0.20" max="1.00" step="0.05" value="0.65" oninput="updateScaleLabels()">
+        <label><span>Translate speed</span><span id="translateValue">0.35</span></label>
+        <input id="translateScale" type="range" min="0.00" max="1.00" step="0.05" value="0.35" oninput="updateScaleLabels()">
       </div>
       <div class="slider-row">
-        <label><span>Rotate speed</span><span id="rotateValue">0.42</span></label>
-        <input id="rotateScale" type="range" min="0.15" max="1.00" step="0.05" value="0.42" oninput="updateScaleLabels()">
+        <label><span>Rotate speed</span><span id="rotateValue">0.30</span></label>
+        <input id="rotateScale" type="range" min="0.00" max="1.00" step="0.05" value="0.30" oninput="updateScaleLabels()">
       </div>
+      <p style="font-size:12px; color:#93aacb; margin:8px 0 0;">
+        Low-speed backup mode now snaps to a stable commutation floor to avoid motor chatter.
+      </p>
     </div>
 
     <div class="card">
@@ -331,6 +334,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     let lastSend = 0;
     let quickMoveActive = false;
     var overrideLatched = false;
+    const STABLE_TRANSLATE_FLOOR = 0.48;
+    const STABLE_ROTATE_FLOOR = 0.44;
+    const RESPONSE_EXPONENT = 1.35;
 
     function clamp(v, lo, hi) {
       return Math.max(lo, Math.min(hi, v));
@@ -438,10 +444,20 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
       const translateScale = Number(document.getElementById('translateScale').value);
       const rotateScale = Number(document.getElementById('rotateScale').value);
       return {
-        vx: vx * translateScale,
-        vy: vy * translateScale,
-        wz: wz * rotateScale
+        vx: shapeCommandAxis(vx, translateScale, STABLE_TRANSLATE_FLOOR),
+        vy: shapeCommandAxis(vy, translateScale, STABLE_TRANSLATE_FLOOR),
+        wz: shapeCommandAxis(wz, rotateScale, STABLE_ROTATE_FLOOR)
       };
+    }
+
+    function shapeCommandAxis(value, sliderScale, stableFloor) {
+      const magnitude = Math.abs(value);
+      if (magnitude < 0.001) return 0;
+
+      const shaped = Math.pow(magnitude, RESPONSE_EXPONENT);
+      const ceiling = stableFloor + (1 - stableFloor) * sliderScale;
+      const output = stableFloor + shaped * (ceiling - stableFloor);
+      return (value < 0 ? -1 : 1) * output;
     }
 
     function emergencyStop() {
