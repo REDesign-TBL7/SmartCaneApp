@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class CameraStreamer:
     def __init__(
-        self, width: int = 640, height: int = 360, jpeg_quality: int = 55
+        self, width: int = 480, height: int = 270, jpeg_quality: int = 42
     ) -> None:
         self.width = width
         self.height = height
@@ -28,7 +28,7 @@ class CameraStreamer:
             try:
                 self.picam = Picamera2()
                 config = self.picam.create_preview_configuration(
-                    main={"size": (width, height)}
+                    main={"size": (width, height), "format": "RGB888"}
                 )
                 self.picam.configure(config)
                 self.picam.start()
@@ -52,7 +52,7 @@ class CameraStreamer:
         if image.mode != "RGB":
             image = image.convert("RGB")
         buffer = io.BytesIO()
-        image.save(buffer, format="JPEG", quality=self.jpeg_quality, optimize=True)
+        image.save(buffer, format="JPEG", quality=self.jpeg_quality, optimize=False, subsampling=2)
         return base64.b64encode(buffer.getvalue()).decode("ascii")
 
     def frame_packet(self, handle_imu_sample: dict[str, Any] | None = None) -> dict[str, object] | None:

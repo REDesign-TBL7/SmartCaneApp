@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import UIKit
 
@@ -17,8 +18,11 @@ final class VisionManager: ObservableObject {
 
     private let connectionManager: CaneConnectionManager
     private var inferenceTask: Task<Void, Never>?
+    private var connectionStatusCancellable: AnyCancellable?
     private var latestFrameData: Data?
     private var latestFrameTimestamp = Date.distantPast
+    private var latestFrameSequence: Int = 0
+    private var lastProcessedFrameSequence: Int = -1
     private let latestPrompt = "Describe hazards relevant for blind cane guidance in one sentence."
 
     init(connectionManager: CaneConnectionManager) {
@@ -27,6 +31,7 @@ final class VisionManager: ObservableObject {
             Task { @MainActor in
                 self?.latestFrameData = frameSample.jpegData
                 self?.latestFrameTimestamp = Date()
+                self?.latestFrameSequence += 1
                 self?.latestFrameByteCount = frameSample.jpegData.count
                 self?.latestFramePreview = UIImage(data: frameSample.jpegData)
                 self?.latestFrameHandleIMUAvailable = frameSample.handleImuAvailable ?? false
@@ -38,17 +43,29 @@ final class VisionManager: ObservableObject {
                 )
             }
         }
+        connectionStatusCancellable = connectionManager.$caneState
+            .map(\.connectionStatus)
+            .removeDuplicates()
+            .sink { [weak self] status in
+                Task { @MainActor in
+                    self?.setInferenceEnabled(status == .connected)
+                }
+            }
         appendDebugLog("vision", "Vision manager initialized")
     }
 
     func setInferenceEnabled(_ enabled: Bool) {
         inferenceEnabled = enabled
         if enabled {
+            if inferenceTask != nil {
+                return
+            }
             appendDebugLog("vision", "Inference enabled")
             startInferenceLoop()
         } else {
             inferenceTask?.cancel()
             inferenceTask = nil
+            lastProcessedFrameSequence = -1
             publishSceneSummary("VLM idle")
             latestHazardTags = []
             appendDebugLog("vision", "Inference disabled")
@@ -63,13 +80,15 @@ final class VisionManager: ObservableObject {
                     return
                 }
 
-                if let frame = self.latestFrameData {
+                if self.latestFrameSequence != self.lastProcessedFrameSequence,
+                   let frame = self.latestFrameData {
+                    self.lastProcessedFrameSequence = self.latestFrameSequence
                     let summary = await self.runFastVLM(on: frame)
                     self.processFastVLMOutput(summary)
                     self.latestFrameAgeMs = Int(Date().timeIntervalSince(self.latestFrameTimestamp) * 1000)
                 }
 
-                try? await Task.sleep(nanoseconds: 650_000_000)
+                try? await Task.sleep(nanoseconds: 150_000_000)
             }
         }
     }
