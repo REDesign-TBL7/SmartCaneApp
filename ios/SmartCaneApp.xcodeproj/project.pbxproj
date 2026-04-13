@@ -25,6 +25,11 @@
 		A10000000000000000000051 /* VoiceCommandButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000052 /* VoiceCommandButton.swift */; };
 		A10000000000000000000058 /* BLEDiagnosticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000059 /* BLEDiagnosticsManager.swift */; };
 		A10000000000000000000060 /* HotspotCredentialsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000061 /* HotspotCredentialsStore.swift */; };
+		A10000000000000000000064 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000069 /* MLXLMCommon */; };
+		A10000000000000000000065 /* MLXVLM in Frameworks */ = {isa = PBXBuildFile; productRef = A1000000000000000000006A /* MLXVLM */; };
+		A10000000000000000000066 /* Tokenizers in Frameworks */ = {isa = PBXBuildFile; productRef = A1000000000000000000006B /* Tokenizers */; };
+		A1000000000000000000006C /* FastVLMModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006D /* FastVLMModelStore.swift */; };
+		A1000000000000000000006E /* VLMSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006F /* VLMSetupView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +53,8 @@
 		A10000000000000000000053 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000059 /* BLEDiagnosticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEDiagnosticsManager.swift; sourceTree = "<group>"; };
 		A10000000000000000000061 /* HotspotCredentialsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotspotCredentialsStore.swift; sourceTree = "<group>"; };
+		A1000000000000000000006D /* FastVLMModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMModelStore.swift; sourceTree = "<group>"; };
+		A1000000000000000000006F /* VLMSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VLMSetupView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +62,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000064 /* MLXLMCommon in Frameworks */,
+				A10000000000000000000065 /* MLXVLM in Frameworks */,
+				A10000000000000000000066 /* Tokenizers in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,6 +105,7 @@
 				A10000000000000000000012 /* HomeView.swift */,
 				A10000000000000000000013 /* NavigationView.swift */,
 				A10000000000000000000015 /* CVModelView.swift */,
+				A1000000000000000000006F /* VLMSetupView.swift */,
 				A10000000000000000000040 /* UserProfileView.swift */,
 				A10000000000000000000052 /* VoiceCommandButton.swift */,
 			);
@@ -122,6 +133,7 @@
 				A10000000000000000000050 /* VoiceCommandManager.swift */,
 				A10000000000000000000059 /* BLEDiagnosticsManager.swift */,
 				A10000000000000000000061 /* HotspotCredentialsStore.swift */,
+				A1000000000000000000006D /* FastVLMModelStore.swift */,
 			);
 			path = Managers;
 			sourceTree = "<group>";
@@ -151,6 +163,11 @@
 			dependencies = (
 			);
 			name = SmartCaneApp;
+			packageProductDependencies = (
+				A10000000000000000000069 /* MLXLMCommon */,
+				A1000000000000000000006A /* MLXVLM */,
+				A1000000000000000000006B /* Tokenizers */,
+			);
 			productName = SmartCaneApp;
 			productReference = A10000000000000000000010 /* SmartCaneApp.app */;
 			productType = "com.apple.product-type.application";
@@ -179,6 +196,8 @@
 			);
 			mainGroup = A10000000000000000000021;
 			packageReferences = (
+				A10000000000000000000067 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
+				A10000000000000000000068 /* XCRemoteSwiftPackageReference "swift-transformers" */,
 			);
 			productRefGroup = A10000000000000000000026 /* Products */;
 			projectDirPath = "";
@@ -222,6 +241,8 @@
 				A10000000000000000000051 /* VoiceCommandButton.swift in Sources */,
 				A10000000000000000000058 /* BLEDiagnosticsManager.swift in Sources */,
 				A10000000000000000000060 /* HotspotCredentialsStore.swift in Sources */,
+				A1000000000000000000006C /* FastVLMModelStore.swift in Sources */,
+				A1000000000000000000006E /* VLMSetupView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,7 +277,7 @@
 				DEVELOPMENT_TEAM = G7SL6M9KWX;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SmartCaneApp/App/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -277,7 +298,7 @@
 				DEVELOPMENT_TEAM = G7SL6M9KWX;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SmartCaneApp/App/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -313,6 +334,43 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A10000000000000000000067 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 2.30.0;
+			};
+		};
+		A10000000000000000000068 /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/huggingface/swift-transformers";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A10000000000000000000069 /* MLXLMCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000067 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
+			productName = MLXLMCommon;
+		};
+		A1000000000000000000006A /* MLXVLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000067 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
+			productName = MLXVLM;
+		};
+		A1000000000000000000006B /* Tokenizers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000068 /* XCRemoteSwiftPackageReference "swift-transformers" */;
+			productName = Tokenizers;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 	};
 	rootObject = A10000000000000000000033 /* Project object */;

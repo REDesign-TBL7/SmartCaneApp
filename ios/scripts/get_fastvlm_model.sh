@@ -2,7 +2,7 @@
 set -euo pipefail
 
 MODEL_SIZE="${1:-0.5b}"
-DEST_DIR="${2:-ios/Resources/FastVLM/model}"
+DEST_DIR="${2:-ios/FastVLMAssets/model}"
 
 case "${MODEL_SIZE}" in
   0.5b) MODEL_NAME="llava-fastvithd_0.5b_stage3_llm.fp16" ;;

@@ -19,7 +19,9 @@ NETWORK_SCRIPT = Path(__file__).resolve().parents[2] / "infra" / "pi-network" / 
 class CommServer:
     def __init__(self) -> None:
         self.clients: set[WebSocketServerProtocol] = set()
+        self._send_lock = asyncio.Lock()
         self.latest_discrete_command = "STOP"
+        self.latest_motion_command: tuple[float, float, float] | None = None
         self.latest_instruction_text = "No instruction"
         self.heartbeat_count = 0
         self.last_heartbeat_time = 0.0
@@ -53,10 +55,31 @@ class CommServer:
                 if payload_type == "DISCRETE_CMD":
                     diagnostics_state.set_stage("CM")
                     self.latest_discrete_command = payload.get("command", "STOP")
+                    self.latest_motion_command = None
                     self.latest_instruction_text = payload.get("instructionText", "")
                     logger.info(
                         "Updated discrete command to %s (%s)",
                         self.latest_discrete_command,
+                        self.latest_instruction_text,
+                    )
+                elif payload_type == "MOTION_CMD":
+                    diagnostics_state.set_stage("CM")
+                    try:
+                        vx = float(payload.get("motionVx", 0.0))
+                        vy = float(payload.get("motionVy", 0.0))
+                        wz = float(payload.get("motionWz", 0.0))
+                    except (TypeError, ValueError):
+                        logger.warning("Dropped malformed MOTION_CMD payload=%s", payload)
+                        continue
+
+                    self.latest_discrete_command = payload.get("command", "STOP")
+                    self.latest_motion_command = (vx, vy, wz)
+                    self.latest_instruction_text = payload.get("instructionText", "")
+                    logger.info(
+                        "Updated motion command to vx=%.3f vy=%.3f wz=%.3f (%s)",
+                        vx,
+                        vy,
+                        wz,
                         self.latest_instruction_text,
                     )
                 elif payload_type == "HEARTBEAT":
@@ -116,10 +139,28 @@ class CommServer:
             return
 
         text = json.dumps(payload)
-        logger.debug("Broadcasting %s to %s client(s)", payload.get("type"), len(self.clients))
-        await asyncio.gather(
-            *(client.send(text) for client in self.clients), return_exceptions=True
-        )
+        payload_type = str(payload.get("type") or "UNKNOWN")
+        logger.debug("Broadcasting %s to %s client(s)", payload_type, len(self.clients))
+
+        disconnected_clients: list[WebSocketServerProtocol] = []
+        async with self._send_lock:
+            for client in tuple(self.clients):
+                try:
+                    await client.send(text)
+                except Exception as exc:
+                    disconnected_clients.append(client)
+                    logger.warning("Failed to send %s to app client: %s", payload_type, exc)
+
+        for client in disconnected_clients:
+            self.clients.discard(client)
+
+        if disconnected_clients:
+            diagnostics_state.set_connected_clients(len(self.clients))
+            logger.info(
+                "Removed %s disconnected app client(s) after %s send failure",
+                len(disconnected_clients),
+                payload_type,
+            )
 
     def telemetry_payload(
         self,

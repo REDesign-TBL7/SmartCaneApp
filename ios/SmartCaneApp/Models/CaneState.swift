@@ -128,6 +128,9 @@ struct OutboundCaneMessage: Codable {
     let protocolVersion: Int
     let timestampMs: Int64
     let command: NavigationCommand?
+    let motionVx: Double?
+    let motionVy: Double?
+    let motionWz: Double?
     let instructionText: String?
     let heartbeat: Bool?
     let vlmSummary: String?
@@ -142,6 +145,34 @@ struct OutboundCaneMessage: Codable {
             protocolVersion: 1,
             timestampMs: Self.nowMs,
             command: command,
+            motionVx: nil,
+            motionVy: nil,
+            motionWz: nil,
+            instructionText: instructionText,
+            heartbeat: nil,
+            vlmSummary: nil,
+            latitude: nil,
+            longitude: nil,
+            debugLabel: nil,
+            clientName: nil
+        )
+    }
+
+    static func motion(
+        command: NavigationCommand,
+        vx: Double,
+        vy: Double,
+        wz: Double,
+        instructionText: String
+    ) -> OutboundCaneMessage {
+        OutboundCaneMessage(
+            type: "MOTION_CMD",
+            protocolVersion: 1,
+            timestampMs: Self.nowMs,
+            command: command,
+            motionVx: vx,
+            motionVy: vy,
+            motionWz: wz,
             instructionText: instructionText,
             heartbeat: nil,
             vlmSummary: nil,
@@ -158,6 +189,9 @@ struct OutboundCaneMessage: Codable {
             protocolVersion: 1,
             timestampMs: Self.nowMs,
             command: nil,
+            motionVx: nil,
+            motionVy: nil,
+            motionWz: nil,
             instructionText: nil,
             heartbeat: true,
             vlmSummary: vlmSummary,
@@ -174,6 +208,9 @@ struct OutboundCaneMessage: Codable {
             protocolVersion: 1,
             timestampMs: Self.nowMs,
             command: nil,
+            motionVx: nil,
+            motionVy: nil,
+            motionWz: nil,
             instructionText: nil,
             heartbeat: nil,
             vlmSummary: nil,
@@ -190,6 +227,9 @@ struct OutboundCaneMessage: Codable {
             protocolVersion: 1,
             timestampMs: Self.nowMs,
             command: nil,
+            motionVx: nil,
+            motionVy: nil,
+            motionWz: nil,
             instructionText: nil,
             heartbeat: nil,
             vlmSummary: nil,
@@ -206,6 +246,9 @@ struct OutboundCaneMessage: Codable {
             protocolVersion: 1,
             timestampMs: Self.nowMs,
             command: nil,
+            motionVx: nil,
+            motionVy: nil,
+            motionWz: nil,
             instructionText: nil,
             heartbeat: nil,
             vlmSummary: nil,

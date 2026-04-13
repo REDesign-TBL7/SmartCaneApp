@@ -35,3 +35,11 @@ __pycache__/
 
 # Runtime logs
 /pi/runtime/logs/
+
+# FastVLM model assets
+/ios/SmartCaneApp/Resources/FastVLM/model/
+*.safetensors
+*.gguf
+*.bin
+*.pt
+*.ckpt

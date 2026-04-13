@@ -20,13 +20,17 @@ This project follows the FastVLM approach from `apple/ml-fastvlm`, but uses a sp
 - VLM loop and hazard extraction: `ios/SmartCaneApp/Managers/VisionManager.swift`
 - Injection interface for real model: `FastVLMEngine` protocol in `ios/SmartCaneApp/Managers/VisionManager.swift`
 
-## Download model files
+## Model delivery
 
-Use the helper script (based on Apple script behavior):
+The app now auto-downloads the FastVLM model on first launch and stores it under the app sandbox
+(`Application Support/FastVLM/model`). The model is mandatory, but it is no longer bundled into
+the app target.
+
+Manual fallback is still available:
 
 ```bash
 chmod +x ios/scripts/get_fastvlm_model.sh
-ios/scripts/get_fastvlm_model.sh 0.5b ios/Resources/FastVLM/model
+ios/scripts/get_fastvlm_model.sh 0.5b ios/FastVLMAssets/model
 ```
 
 Model options: `0.5b`, `1.5b`, `7b`.
@@ -35,24 +39,21 @@ Model options: `0.5b`, `1.5b`, `7b`.
 
 1. Open `ios/SmartCaneApp.xcodeproj`.
 2. Select the project, then `Package Dependencies`, and add:
-   - `https://github.com/ml-explore/mlx-swift` (up to next major)
-   - `https://github.com/ml-explore/mlx-swift-examples` (up to next major)
-   - `https://github.com/huggingface/swift-transformers` (up to next major)
+   - `https://github.com/ml-explore/mlx-swift-lm` (up to next minor)
+   - `https://github.com/huggingface/swift-transformers` (up to next minor)
 3. In target `SmartCaneApp` under `Frameworks, Libraries, and Embedded Content`, add package products:
-   - `MLX`
    - `MLXLMCommon`
    - `MLXVLM`
-4. Add `FastVLM` source files from Apple repo as local package/framework or vendored target if needed.
-5. Add model directory (`ios/Resources/FastVLM/model`) to app bundle resources.
-6. Ensure `FastVLM` and `MLXVLM` imports resolve in `FastVLMAppleEngine.swift`.
-7. This repo already auto-wires `FastVLMAppleEngine` in `ios/SmartCaneApp/App/SmartCaneApp.swift` behind `#if canImport(...)` guards.
-8. Validate one frame end-to-end by checking `CVModelView` summary text updates during navigation.
+   - `Tokenizers`
+4. Ensure `MLXLMCommon`, `MLXVLM`, `Tokenizers`, and `Hub` imports resolve where needed.
+5. This repo already auto-wires `FastVLMAppleEngine` in `ios/SmartCaneApp/App/SmartCaneApp.swift` behind `#if canImport(...)` guards.
+6. On first app launch, allow the automatic model download to complete.
+7. Validate one frame end-to-end by checking `CVModelView` summary text updates during navigation.
 
 ## Important dependency note
 
-Apple's `FastVLM` repo provides FastVLM framework source under `app/FastVLM`. You need that
-framework available to this project (via local package/target integration) for the concrete
-engine to compile and run.
+The app now uses `MLXVLM` directly with a local FastVLM model directory, so no separate
+`FastVLM` framework target is required.
 
 ## Minimal implementation pattern
 

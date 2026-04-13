@@ -99,6 +99,17 @@ async def telemetry_and_control_loop(
         if safety_manager.should_force_stop(obstacle_cm):
             logger.debug("Safety forcing STOP, obstacle=%.2f fault=%s", obstacle_cm, safety_manager.fault_code)
             motor_controller.stop()
+        elif comm_server.latest_motion_command is not None:
+            vx, vy, wz = comm_server.latest_motion_command
+            logger.debug(
+                "Applying app motion vx=%.3f vy=%.3f wz=%.3f obstacle=%.2f heartbeat=%s",
+                vx,
+                vy,
+                wz,
+                obstacle_cm,
+                comm_server.heartbeat_count,
+            )
+            motor_controller.apply_motion_command(vx, vy, wz)
         else:
             logger.debug(
                 "Applying app command=%s obstacle=%.2f heartbeat=%s",

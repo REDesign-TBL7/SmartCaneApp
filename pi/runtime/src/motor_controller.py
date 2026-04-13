@@ -3,7 +3,8 @@ Pi-to-ESP32 motor bridge.
 
 The Raspberry Pi no longer drives the motor GPIO pins directly. The Pi receives
 commands from the iPhone app over WebSocket, applies safety logic, then forwards
-the final LEFT / RIGHT / FORWARD / STOP command to the ESP32 over serial.
+either a continuous MOVE vector or a fallback LEFT / RIGHT / FORWARD / STOP
+command to the ESP32 over serial.
 """
 
 import os
@@ -19,9 +20,9 @@ except ImportError:  # pragma: no cover - lets local dev run without pyserial
 VALID_COMMANDS = {"LEFT", "RIGHT", "FORWARD", "STOP"}
 DEFAULT_BAUD_RATE = 115200
 DEFAULT_SERIAL_PORTS = (
+    "/dev/serial0",
     "/dev/ttyUSB0",
     "/dev/ttyACM0",
-    "/dev/serial0",
 )
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,14 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MotorCommand:
     command: str
+    sent_to_esp32: bool
+
+
+@dataclass
+class MotionCommand:
+    vx: float
+    vy: float
+    wz: float
     sent_to_esp32: bool
 
 
@@ -54,6 +63,8 @@ class MotorController:
         self.baud_rate = int(os.getenv("SMARTCANE_ESP32_BAUD", DEFAULT_BAUD_RATE))
         self.serial_connection = None
         self.last_command = MotorCommand(command="STOP", sent_to_esp32=False)
+        self.last_motion = MotionCommand(vx=0.0, vy=0.0, wz=0.0, sent_to_esp32=False)
+        self.last_serial_line = "STOP"
         self.latest_motor_imu = MotorIMUTelemetry()
         self.latest_ultrasonic = UltrasonicTelemetry()
         self.status_message = "ESP32 motor serial link not connected"
@@ -69,14 +80,46 @@ class MotorController:
         command = self._normalize_command(cmd)
 
         # Avoid spamming the ESP32 every 0.2 seconds while the same command is active.
-        if command == self.last_command.command and self.last_command.sent_to_esp32:
+        if command == self.last_command.command and self.last_command.sent_to_esp32 and self.last_serial_line == command:
             logger.debug("Skipping duplicate motor command %s", command)
             return self.last_command
 
-        was_sent = self._send_command_to_esp32(command)
+        was_sent = self._send_line_to_esp32(command, f"Sent motor command to ESP32: {command}")
         self.last_command = MotorCommand(command=command, sent_to_esp32=was_sent)
+        if was_sent:
+            self.last_motion = MotionCommand(vx=0.0, vy=0.0, wz=0.0, sent_to_esp32=False)
         logger.debug("Motor command result command=%s sent=%s", command, was_sent)
         return self.last_command
+
+    def apply_motion_command(self, vx: float, vy: float, wz: float) -> MotionCommand:
+        self.poll_motor_imu()
+
+        vx = self._clamp_motion_component(vx)
+        vy = self._clamp_motion_component(vy)
+        wz = self._clamp_motion_component(wz)
+
+        if max(abs(vx), abs(vy), abs(wz)) < 0.001:
+            self.apply_discrete_command("STOP")
+            self.last_motion = MotionCommand(vx=0.0, vy=0.0, wz=0.0, sent_to_esp32=self.last_command.sent_to_esp32)
+            return self.last_motion
+
+        serial_line = f"MOVE {vx:.3f} {vy:.3f} {wz:.3f}"
+        if (
+            self.last_motion.sent_to_esp32
+            and self.last_serial_line == serial_line
+        ):
+            logger.debug("Skipping duplicate motion command %s", serial_line)
+            return self.last_motion
+
+        was_sent = self._send_line_to_esp32(
+            serial_line,
+            f"Sent motion command to ESP32: vx={vx:.3f} vy={vy:.3f} wz={wz:.3f}",
+        )
+        self.last_motion = MotionCommand(vx=vx, vy=vy, wz=wz, sent_to_esp32=was_sent)
+        if was_sent:
+            self.last_command = MotorCommand(command="STOP", sent_to_esp32=False)
+        logger.debug("Motion command result vx=%.3f vy=%.3f wz=%.3f sent=%s", vx, vy, wz, was_sent)
+        return self.last_motion
 
     def poll_motor_imu(self) -> MotorIMUTelemetry:
         """Read ESP32 motor-unit IMU lines without blocking.
@@ -133,16 +176,17 @@ class MotorController:
             self.status_message = f"ESP32 serial connection failed: {error}"
             logger.exception("ESP32 serial connection failed")
 
-    def _send_command_to_esp32(self, command: str) -> bool:
+    def _send_line_to_esp32(self, line: str, status_message: str) -> bool:
         if self.serial_connection is None:
             self.status_message = "ESP32 motor command dropped; serial link unavailable"
             return False
 
         try:
-            self.serial_connection.write(f"{command}\n".encode("utf-8"))
+            self.serial_connection.write(f"{line}\n".encode("utf-8"))
             self.serial_connection.flush()
-            self.status_message = f"Sent motor command to ESP32: {command}"
-            logger.info("Sent motor command to ESP32: %s", command)
+            self.status_message = status_message
+            self.last_serial_line = line
+            logger.info("%s", status_message)
             return True
         except serial.SerialException as error:
             self.status_message = f"ESP32 serial write failed: {error}"
@@ -160,6 +204,10 @@ class MotorController:
     def _normalize_command(cmd: str) -> str:
         command = (cmd or "STOP").strip().upper()
         return command if command in VALID_COMMANDS else "STOP"
+
+    @staticmethod
+    def _clamp_motion_component(value: float) -> float:
+        return max(-1.0, min(1.0, float(value)))
 
     def _handle_esp32_line(self, line: str) -> None:
         if not line:

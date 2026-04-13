@@ -345,7 +345,7 @@ final class VoiceCommandManager: ObservableObject {
         }
 
         return await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { isAllowed in
+            AVAudioApplication.requestRecordPermission { isAllowed in
                 continuation.resume(returning: isAllowed)
             }
         }

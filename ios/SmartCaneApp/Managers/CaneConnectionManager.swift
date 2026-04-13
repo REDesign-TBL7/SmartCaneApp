@@ -87,6 +87,7 @@ final class CaneConnectionManager: ObservableObject {
     private var receiveTask: Task<Void, Never>?
     private var frameHandler: ((FrameSample) -> Void)?
     private var savedRouteCommand: (command: NavigationCommand, instructionText: String)?
+    private var lastMotionSignature: String?
     private var isSafetyOverrideActive = false
     private var isVisionSafetyOverrideActive = false
     private let encoder = JSONEncoder()
@@ -341,6 +342,23 @@ final class CaneConnectionManager: ObservableObject {
         sendEffectiveNavigationCommand(command, instructionText: instructionText)
     }
 
+    func sendMotionCommand(
+        _ command: NavigationCommand,
+        vx: Double,
+        vy: Double,
+        wz: Double,
+        instructionText: String
+    ) {
+        if command == .stop || max(abs(vx), abs(vy), abs(wz)) < 0.001 {
+            savedRouteCommand = nil
+            sendEffectiveMotionCommand(.stop, vx: 0, vy: 0, wz: 0, instructionText: instructionText)
+            return
+        }
+
+        savedRouteCommand = (command, instructionText)
+        sendEffectiveMotionCommand(command, vx: vx, vy: vy, wz: wz, instructionText: instructionText)
+    }
+
     func sendDebugPing() {
         let label = "phone_ping_\(Int(Date().timeIntervalSince1970))"
         pendingPingStartedAt = Date()
@@ -590,13 +608,57 @@ final class CaneConnectionManager: ObservableObject {
         sendRawNavigationCommand(command, instructionText: instructionText)
     }
 
+    private func sendEffectiveMotionCommand(
+        _ command: NavigationCommand,
+        vx: Double,
+        vy: Double,
+        wz: Double,
+        instructionText: String
+    ) {
+        if shouldForceStopForImmediateSafety {
+            sendSafetyOverrideCommand(.stop, instructionText: "Stopping for safety")
+            return
+        }
+
+        isSafetyOverrideActive = false
+        sendRawMotionCommand(command, vx: vx, vy: vy, wz: wz, instructionText: instructionText)
+    }
+
     private func sendRawNavigationCommand(_ command: NavigationCommand, instructionText: String) {
         caneState.currentNavigationCommand = command
         caneState.currentInstruction = instructionText
+        lastMotionSignature = nil
 
         appendDebugLog("command", "Sending \(command.rawValue): \(instructionText)")
         send(.command(command, instructionText: instructionText))
         caneState.statusMessage = "Sent Wi-Fi direction: \(command.rawValue)"
+    }
+
+    private func sendRawMotionCommand(
+        _ command: NavigationCommand,
+        vx: Double,
+        vy: Double,
+        wz: Double,
+        instructionText: String
+    ) {
+        let clampedVx = max(-1.0, min(1.0, vx))
+        let clampedVy = max(-1.0, min(1.0, vy))
+        let clampedWz = max(-1.0, min(1.0, wz))
+        let signature = "\(command.rawValue)|\(String(format: "%.3f", clampedVx))|\(String(format: "%.3f", clampedVy))|\(String(format: "%.3f", clampedWz))|\(instructionText)"
+        guard signature != lastMotionSignature else {
+            return
+        }
+
+        lastMotionSignature = signature
+        caneState.currentNavigationCommand = command
+        caneState.currentInstruction = instructionText
+
+        appendDebugLog(
+            "command",
+            "Sending \(command.rawValue) motion vx=\(String(format: "%.2f", clampedVx)) vy=\(String(format: "%.2f", clampedVy)) wz=\(String(format: "%.2f", clampedWz)): \(instructionText)"
+        )
+        send(.motion(command: command, vx: clampedVx, vy: clampedVy, wz: clampedWz, instructionText: instructionText))
+        caneState.statusMessage = "Sent Wi-Fi motion \(command.rawValue) at speed-scaled vector"
     }
 
     private func startHeartbeatLoop() {

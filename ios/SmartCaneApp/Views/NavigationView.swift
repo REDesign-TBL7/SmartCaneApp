@@ -70,7 +70,7 @@ struct NavigationView: View {
         .onAppear {
             locationManager.prepareForSearchEntry()
         }
-        .onChange(of: locationManager.activeDestination?.id) { newDestinationID in
+        .onChange(of: locationManager.activeDestination?.id) { _, newDestinationID in
             if newDestinationID != nil {
                 dismiss()
             }

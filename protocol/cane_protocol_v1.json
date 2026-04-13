@@ -49,6 +49,20 @@
     },
     {
       "type": "object",
+      "required": ["type", "protocolVersion", "timestampMs", "command", "motionVx", "motionVy", "motionWz"],
+      "properties": {
+        "type": { "const": "MOTION_CMD" },
+        "protocolVersion": { "const": 1 },
+        "timestampMs": { "type": "integer" },
+        "command": { "$ref": "#/definitions/discreteCommand" },
+        "motionVx": { "type": "number" },
+        "motionVy": { "type": "number" },
+        "motionWz": { "type": "number" },
+        "instructionText": { "type": "string" }
+      }
+    },
+    {
+      "type": "object",
       "required": ["type", "protocolVersion", "timestampMs", "heartbeat"],
       "properties": {
         "type": { "const": "HEARTBEAT" },

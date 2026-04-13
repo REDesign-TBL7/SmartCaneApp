@@ -18,13 +18,15 @@ struct SmartCaneDemoApp: App {
     @StateObject private var fusionManager: GuidanceFusionManager
     @StateObject private var voiceCommandManager: VoiceCommandManager
     @StateObject private var bleDiagnosticsManager: BLEDiagnosticsManager
+    @StateObject private var fastVLMModelStore: FastVLMModelStore
 
     init() {
         let profileManager = ProfileManager()
         let connectionManager = CaneConnectionManager()
         let visionManager = VisionManager(connectionManager: connectionManager)
         let fusionManager = GuidanceFusionManager(connectionManager: connectionManager, visionManager: visionManager)
-#if canImport(FastVLM) && canImport(MLXVLM)
+        let fastVLMModelStore = FastVLMModelStore()
+#if canImport(MLXLMCommon) && canImport(MLXVLM) && canImport(Tokenizers)
         visionManager.fastVLMEngine = FastVLMAppleEngine()
 #endif
         _profileManager = StateObject(wrappedValue: profileManager)
@@ -35,11 +37,18 @@ struct SmartCaneDemoApp: App {
         _fusionManager = StateObject(wrappedValue: fusionManager)
         _voiceCommandManager = StateObject(wrappedValue: VoiceCommandManager())
         _bleDiagnosticsManager = StateObject(wrappedValue: BLEDiagnosticsManager(connectionManager: connectionManager))
+        _fastVLMModelStore = StateObject(wrappedValue: fastVLMModelStore)
     }
 
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            Group {
+                if fastVLMModelStore.isModelReady {
+                    HomeView()
+                } else {
+                    VLMSetupView()
+                }
+            }
                 .environmentObject(connectionManager)
                 .environmentObject(locationManager)
                 .environmentObject(speechManager)
@@ -48,6 +57,7 @@ struct SmartCaneDemoApp: App {
                 .environmentObject(fusionManager)
                 .environmentObject(voiceCommandManager)
                 .environmentObject(bleDiagnosticsManager)
+                .environmentObject(fastVLMModelStore)
                 .tint(Color(red: 0.18, green: 0.34, blue: 0.37))
         }
     }

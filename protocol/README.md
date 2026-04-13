@@ -23,7 +23,9 @@ Debug connectivity:
 - App can use this to show round-trip time and confirm command transport health.
 
 Motor command bridge:
-- After Pi safety checks, the Pi forwards `LEFT`, `RIGHT`, `FORWARD`, or `STOP`
+- After Pi safety checks, the Pi forwards either:
+  - `MOVE <vx> <vy> <wz>` for speed-scaled omni-drive motion, or
+  - `LEFT`, `RIGHT`, `FORWARD`, `STOP` as fallback discrete commands
   to the ESP32 as newline-terminated serial text.
 - The ESP32 owns DRV8313 motor pin sequencing.
 - The ESP32 also owns the motor-unit IMU and reports `MOTOR_IMU ...` serial lines

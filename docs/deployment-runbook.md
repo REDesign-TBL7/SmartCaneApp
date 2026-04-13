@@ -108,6 +108,24 @@ Open [ios/SmartCaneApp.xcodeproj](/Users/hanyuxuan/Desktop/REDesign/ios/SmartCan
 8. The app connects to `ws://<pi-ip>:8080/ws`.
 9. ESP32 receives final motor commands from the Pi over serial.
 
+## 5A. ESP32 Backup Remote Control
+
+Use this if the Pi runtime or app path becomes unreliable during the demo.
+
+1. Join the ESP32 AP:
+   - SSID `ESP32_OMNI_BOT`
+   - password `12345678`
+2. Open `http://192.168.4.1`
+3. Tap `Arm backup override`
+4. Use the joystick or quick buttons to drive the motors directly
+5. Adjust `Translate speed` and `Rotate speed` sliders as needed for the demo floor
+6. Watch the live status card:
+   - control source
+   - obstacle distance
+   - applied motion vector
+   - wheel mix
+7. Release backup override when returning control to the Pi
+
 ## 6. Pi OTA Update
 
 Automatic path:

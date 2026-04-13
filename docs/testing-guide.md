@@ -15,6 +15,7 @@ First test software, then serial, then motor bench behavior, then full integrati
 - Keep USB power or a physical power switch reachable.
 - Start with `STOP`, then test one direction at a time.
 - Do not walk with the device until `STOP` works reliably from the app and from Pi safety logic.
+- Do not walk with the device until `STOP` also works from the ESP32 backup web controller.
 - If a motor spins the wrong way, stop testing and fix the ESP32 direction mapping before continuing.
 
 ## 1) Repo Sanity Check
@@ -42,6 +43,29 @@ Expected:
 
 - `git diff --check` prints nothing.
 - `py_compile` exits without errors.
+
+## 1A) ESP32 Backup Controller Smoke Test
+
+With the ESP32 flashed and powered:
+
+1. Join Wi-Fi network `ESP32_OMNI_BOT`
+2. Open `http://192.168.4.1`
+3. Confirm the page shows:
+   - backup override button
+   - live status
+   - speed sliders
+   - quick controls
+4. Tap `Arm backup override`
+5. Verify the status card shows `WEB_OVERRIDE`
+6. Tap `STOP`
+7. Release backup override
+
+Pass criteria:
+
+- The page loads reliably on phone
+- Override state changes immediately
+- `STOP` works even without the Pi path
+- Releasing override returns ownership to the Pi/serial path
 
 ## 2) iOS App Build Test
 

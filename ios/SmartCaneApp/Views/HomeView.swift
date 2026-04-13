@@ -16,6 +16,7 @@ struct HomeView: View {
     @EnvironmentObject private var locationManager: LocationManager
     @EnvironmentObject private var speechManager: SpeechManager
     @EnvironmentObject private var visionManager: VisionManager
+    @EnvironmentObject private var fusionManager: GuidanceFusionManager
     @EnvironmentObject private var bleDiagnosticsManager: BLEDiagnosticsManager
     @State private var showsNavigationSearch = false
     @State private var showsConnectionAssistant = false
@@ -27,6 +28,7 @@ struct HomeView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
+                        liveGuidanceSection
                         navigationSection
                         vlmSection
                     }
@@ -54,7 +56,7 @@ struct HomeView: View {
             .onAppear {
                 speechManager.speak("Smart Cane ready. Use Read for status, or Speak for voice commands.")
             }
-            .onChange(of: connectionManager.caneState.connectionStatus) { newStatus in
+            .onChange(of: connectionManager.caneState.connectionStatus) { _, newStatus in
                 speechManager.speakUrgent("Cane connection \(newStatus.rawValue.lowercased()).")
                 visionManager.setInferenceEnabled(newStatus == .connected)
                 if newStatus == .connected {
@@ -126,10 +128,41 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 14) {
             connectionButton
             navigationButton
+            demoStatusStrip
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private var liveGuidanceSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Short-range obstacle avoidance")
+                .font(.headline.weight(.bold))
+
+            Text(fusionManager.guidanceHeadline)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(fusionManager.isImmediateStopRecommended ? Color.red.opacity(0.88) : Color.primary)
+
+            Text(fusionManager.guidanceDetail)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 10) {
+                demoValueRow("Obstacle", connectionManager.caneState.obstacleMessage)
+                demoValueRow("Navigation", locationManager.currentInstruction)
+                demoValueRow("Hazard ID", visionManager.latestHazardAssessment)
+                demoValueRow("Traffic Light", visionManager.latestTrafficLightAssessment)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.70), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .stroke(Color.white.opacity(0.55), lineWidth: 1)
@@ -196,7 +229,7 @@ struct HomeView: View {
 
     private var vlmSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("FastVLM runs on-device from Pi camera frames to provide scene-aware guidance.")
+            Text("FastVLM now backs up the ultrasonic obstacle sensor and checks crossing lights, while the cane keeps turn guidance active.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -230,6 +263,25 @@ struct HomeView: View {
         )
     }
 
+    private var demoStatusStrip: some View {
+        HStack(spacing: 10) {
+            demoChip(
+                title: "Obstacle",
+                value: connectionManager.caneState.nearestObstacleCm >= 0
+                    ? "\(Int(connectionManager.caneState.nearestObstacleCm)) cm"
+                    : "No sensor"
+            )
+            demoChip(
+                title: "Mode",
+                value: fusionManager.isImmediateStopRecommended ? "Stop" : visionManager.latestInferenceMode
+            )
+            demoChip(
+                title: "Traffic",
+                value: shortTrafficStatus
+            )
+        }
+    }
+
     private func toggleDemoConnection() {
         if connectionManager.caneState.connectionStatus == .connected {
             connectionManager.disconnectFromCane()
@@ -242,17 +294,57 @@ struct HomeView: View {
     }
 
     private func announceHomeSummary() {
-        let navigation = locationManager.hasActiveNavigation
-            ? "Navigating to \(locationManager.navigationStatusValue). Use Speak to change or stop."
-            : "No active navigation. Use Speak to search."
         let pairing = connectionManager.pairedDevice.map {
             "Cane network \($0.deviceName)."
         } ?? "Turn on Personal Hotspot and wait for BLE diagnostics to discover the Pi first."
         let connectionCommand = connectionManager.caneState.connectionStatus == .connected
             ? "Say disconnect cane to disconnect."
             : "Say connect cane after turning on Personal Hotspot."
-        let summary = "\(pairing) Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased()). \(navigation) \(connectionCommand)"
+        let summary = "\(pairing) Cane \(connectionManager.caneState.connectionStatus.rawValue.lowercased()). \(fusionManager.demoNarrative) \(connectionCommand)"
         speechManager.speak(summary, interrupt: true, force: true)
+    }
+
+    private var shortTrafficStatus: String {
+        let traffic = visionManager.latestTrafficLightAssessment
+        if traffic == "No traffic signal visible." {
+            return "None"
+        }
+        if traffic.contains("Green") {
+            return "Green"
+        }
+        if traffic.contains("Red") {
+            return "Red"
+        }
+        if traffic.contains("Amber") {
+            return "Amber"
+        }
+        return "Seen"
+    }
+
+    private func demoChip(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.weight(.bold))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func demoValueRow(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var readMenuButton: some View {
@@ -292,6 +384,7 @@ struct HomeView_Previews: PreviewProvider {
             .environmentObject(speechManager)
             .environmentObject(profileManager)
             .environmentObject(visionManager)
+            .environmentObject(fusionManager)
             .environmentObject(VoiceCommandManager())
             .environmentObject(bleDiagnosticsManager)
     }
@@ -331,7 +424,7 @@ private struct ConnectionAssistantSheet: View {
             .onAppear {
                 bleDiagnosticsManager.beginConnectionAssist(autoConnect: true)
             }
-            .onChange(of: bleDiagnosticsManager.nearbyDevices.map(\.id)) { _ in
+            .onChange(of: bleDiagnosticsManager.nearbyDevices.map(\.id)) { _, _ in
                 guard !bleDiagnosticsManager.nearbyDevices.isEmpty,
                       !bleDiagnosticsManager.isReadingDetailedStatus,
                       !bleDiagnosticsManager.isProvisioning,
@@ -340,7 +433,7 @@ private struct ConnectionAssistantSheet: View {
                 }
                 bleDiagnosticsManager.readDetailedDiagnostics()
             }
-            .onChange(of: connectionManager.caneState.connectionStatus) { newStatus in
+            .onChange(of: connectionManager.caneState.connectionStatus) { _, newStatus in
                 if newStatus == .connected {
                     dismiss()
                 }
