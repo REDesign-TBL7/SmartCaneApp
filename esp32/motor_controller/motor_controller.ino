@@ -70,6 +70,13 @@ static const uint32_t STEP_DELAY_FAST = 2500;
 static const unsigned long ULTRASONIC_POLL_INTERVAL_MS = 35;
 static const unsigned long ULTRASONIC_SAMPLE_STALE_MS = 250;
 static const unsigned long ULTRASONIC_ECHO_TIMEOUT_US = 18000;
+static const float OBSTACLE_TRIGGER_CM = 100.0f;
+static const unsigned long FRONT_REVERSE_DURATION_MS = 500;
+static const unsigned long FRONT_SIDESTEP_DURATION_MS = 700;
+static const unsigned long SIDE_SIDESTEP_DURATION_MS = 350;
+static const unsigned long AVOIDANCE_COOLDOWN_MS = 250;
+static const float AVOIDANCE_REVERSE_SPEED = 0.70f;
+static const float AVOIDANCE_SIDESTEP_SPEED = 0.80f;
 static const uint8_t MPU6050_ADDR = 0x68;
 static const uint8_t REG_PWR_MGMT_1 = 0x6B;
 static const uint8_t REG_SMPLRT_DIV = 0x19;
@@ -426,6 +433,14 @@ enum CommandSource {
   SOURCE_PI_SERIAL
 };
 
+enum AvoidanceMode {
+  AVOIDANCE_NONE,
+  AVOIDANCE_REVERSE,
+  AVOIDANCE_SIDESTEP_LEFT,
+  AVOIDANCE_SIDESTEP_RIGHT,
+  AVOIDANCE_COOLDOWN
+};
+
 struct MotorState {
   int in1;
   int in2;
@@ -455,6 +470,10 @@ UltrasonicPins ultrasonicSensors[] = {
   { US4_TRIG, US4_ECHO }
 };
 static const size_t ULTRASONIC_SENSOR_COUNT = sizeof(ultrasonicSensors) / sizeof(ultrasonicSensors[0]);
+static const size_t RIGHT_SENSOR_INDEX = 0;
+static const size_t LEGACY_FRONT_SENSOR_INDEX = 1;
+static const size_t LEFT_SENSOR_INDEX = 2;
+static const size_t FRONT_SENSOR_INDEX = 3;
 
 String serialLine = "";
 String usbSerialLine = "";
@@ -481,6 +500,11 @@ float nearestObstacleCm = -1.0f;
 float ultrasonicDistances[ULTRASONIC_SENSOR_COUNT] = { -1.0f, -1.0f, -1.0f, -1.0f };
 unsigned long ultrasonicSampleAtMs[ULTRASONIC_SENSOR_COUNT] = { 0, 0, 0, 0 };
 CommandSource activeCommandSource = SOURCE_NONE;
+AvoidanceMode activeAvoidanceMode = AVOIDANCE_NONE;
+unsigned long avoidanceModeStartedAtMs = 0;
+unsigned long avoidanceSidestepDurationMs = FRONT_SIDESTEP_DURATION_MS;
+float bestRightDistanceDuringReverseCm = -1.0f;
+float bestLeftDistanceDuringReverseCm = -1.0f;
 
 void debugLog(const String &message) {
   Serial.println(message);
@@ -513,6 +537,22 @@ const char *commandName(CaneCommand command) {
     case CMD_STOP:
     default:
       return "STOP";
+  }
+}
+
+const char *avoidanceModeName(AvoidanceMode mode) {
+  switch (mode) {
+    case AVOIDANCE_REVERSE:
+      return "REVERSE";
+    case AVOIDANCE_SIDESTEP_LEFT:
+      return "SIDESTEP_LEFT";
+    case AVOIDANCE_SIDESTEP_RIGHT:
+      return "SIDESTEP_RIGHT";
+    case AVOIDANCE_COOLDOWN:
+      return "COOLDOWN";
+    case AVOIDANCE_NONE:
+    default:
+      return "NONE";
   }
 }
 
@@ -736,7 +776,17 @@ void printStatus() {
   Serial.print(" | wheels ");
   Serial.print(m1.out, 2); Serial.print(", ");
   Serial.print(m2.out, 2); Serial.print(", ");
-  Serial.println(m3.out, 2);
+  Serial.print(m3.out, 2);
+  Serial.print(" | avoid ");
+  Serial.print(avoidanceModeName(activeAvoidanceMode));
+  Serial.print(" | us ");
+  Serial.print(ultrasonicDistances[RIGHT_SENSOR_INDEX], 1);
+  Serial.print(", ");
+  Serial.print(ultrasonicDistances[LEGACY_FRONT_SENSOR_INDEX], 1);
+  Serial.print(", ");
+  Serial.print(ultrasonicDistances[LEFT_SENSOR_INDEX], 1);
+  Serial.print(", ");
+  Serial.println(ultrasonicDistances[FRONT_SENSOR_INDEX], 1);
 }
 
 bool imuWriteRegister(uint8_t reg, uint8_t value) {
@@ -917,6 +967,135 @@ void recomputeNearestObstacle(unsigned long nowMs) {
   }
 
   nearestObstacleCm = bestDistance;
+}
+
+float freshUltrasonicDistanceCm(size_t sensorIndex, unsigned long nowMs) {
+  if (sensorIndex >= ULTRASONIC_SENSOR_COUNT) {
+    return -1.0f;
+  }
+
+  if (ultrasonicSampleAtMs[sensorIndex] == 0 || (nowMs - ultrasonicSampleAtMs[sensorIndex]) > ULTRASONIC_SAMPLE_STALE_MS) {
+    return -1.0f;
+  }
+
+  float candidate = ultrasonicDistances[sensorIndex];
+  return candidate > 0.0f ? candidate : -1.0f;
+}
+
+void setAvoidanceMode(AvoidanceMode mode, unsigned long nowMs, const String &reason) {
+  if (activeAvoidanceMode != mode) {
+    debugLog(String("Avoidance -> ") + avoidanceModeName(mode) + " (" + reason + ")");
+  }
+  activeAvoidanceMode = mode;
+  avoidanceModeStartedAtMs = nowMs;
+}
+
+void beginFrontAvoidance(unsigned long nowMs) {
+  bestRightDistanceDuringReverseCm = -1.0f;
+  bestLeftDistanceDuringReverseCm = -1.0f;
+  setAvoidanceMode(AVOIDANCE_REVERSE, nowMs, "front obstacle on sensor 4");
+}
+
+void beginSideAvoidance(bool moveLeft, unsigned long nowMs, const String &reason) {
+  avoidanceSidestepDurationMs = SIDE_SIDESTEP_DURATION_MS;
+  setAvoidanceMode(moveLeft ? AVOIDANCE_SIDESTEP_LEFT : AVOIDANCE_SIDESTEP_RIGHT, nowMs, reason);
+}
+
+void updateAvoidanceState(unsigned long nowMs) {
+  float rightDistance = freshUltrasonicDistanceCm(RIGHT_SENSOR_INDEX, nowMs);
+  float leftDistance = freshUltrasonicDistanceCm(LEFT_SENSOR_INDEX, nowMs);
+  float frontDistance = freshUltrasonicDistanceCm(FRONT_SENSOR_INDEX, nowMs);
+
+  switch (activeAvoidanceMode) {
+    case AVOIDANCE_NONE:
+      if (frontDistance > 0.0f && frontDistance <= OBSTACLE_TRIGGER_CM) {
+        beginFrontAvoidance(nowMs);
+        return;
+      }
+
+      if (rightDistance > 0.0f && rightDistance <= OBSTACLE_TRIGGER_CM
+          && (leftDistance < 0.0f || rightDistance <= leftDistance)) {
+        beginSideAvoidance(true, nowMs, "right obstacle on sensor 1");
+        return;
+      }
+
+      if (leftDistance > 0.0f && leftDistance <= OBSTACLE_TRIGGER_CM
+          && (rightDistance < 0.0f || leftDistance < rightDistance)) {
+        beginSideAvoidance(false, nowMs, "left obstacle on sensor 3");
+        return;
+      }
+      return;
+
+    case AVOIDANCE_REVERSE:
+      if (rightDistance > bestRightDistanceDuringReverseCm) {
+        bestRightDistanceDuringReverseCm = rightDistance;
+      }
+      if (leftDistance > bestLeftDistanceDuringReverseCm) {
+        bestLeftDistanceDuringReverseCm = leftDistance;
+      }
+
+      if ((nowMs - avoidanceModeStartedAtMs) >= FRONT_REVERSE_DURATION_MS) {
+        bool moveRight = bestRightDistanceDuringReverseCm > bestLeftDistanceDuringReverseCm;
+        if (bestRightDistanceDuringReverseCm < 0.0f && bestLeftDistanceDuringReverseCm < 0.0f) {
+          moveRight = false;
+        }
+        avoidanceSidestepDurationMs = FRONT_SIDESTEP_DURATION_MS;
+        setAvoidanceMode(
+          moveRight ? AVOIDANCE_SIDESTEP_RIGHT : AVOIDANCE_SIDESTEP_LEFT,
+          nowMs,
+          moveRight ? "sensor 1 had more clearance during reverse" : "sensor 3 had more clearance during reverse"
+        );
+      }
+      return;
+
+    case AVOIDANCE_SIDESTEP_LEFT:
+      if ((nowMs - avoidanceModeStartedAtMs) >= avoidanceSidestepDurationMs) {
+        setAvoidanceMode(AVOIDANCE_COOLDOWN, nowMs, "left sidestep complete");
+      }
+      return;
+
+    case AVOIDANCE_SIDESTEP_RIGHT:
+      if ((nowMs - avoidanceModeStartedAtMs) >= avoidanceSidestepDurationMs) {
+        setAvoidanceMode(AVOIDANCE_COOLDOWN, nowMs, "right sidestep complete");
+      }
+      return;
+
+    case AVOIDANCE_COOLDOWN:
+      if ((nowMs - avoidanceModeStartedAtMs) >= AVOIDANCE_COOLDOWN_MS) {
+        activeAvoidanceMode = AVOIDANCE_NONE;
+      }
+      return;
+  }
+}
+
+void effectiveMotionTargets(float &vx, float &vy, float &wz, unsigned long nowMs) {
+  vx = vx_cmd;
+  vy = vy_cmd;
+  wz = wz_cmd;
+
+  updateAvoidanceState(nowMs);
+
+  switch (activeAvoidanceMode) {
+    case AVOIDANCE_REVERSE:
+      vx = -AVOIDANCE_REVERSE_SPEED;
+      vy = 0.0f;
+      wz = 0.0f;
+      break;
+    case AVOIDANCE_SIDESTEP_LEFT:
+      vx = 0.0f;
+      vy = AVOIDANCE_SIDESTEP_SPEED;
+      wz = 0.0f;
+      break;
+    case AVOIDANCE_SIDESTEP_RIGHT:
+      vx = 0.0f;
+      vy = -AVOIDANCE_SIDESTEP_SPEED;
+      wz = 0.0f;
+      break;
+    case AVOIDANCE_COOLDOWN:
+    case AVOIDANCE_NONE:
+    default:
+      break;
+  }
 }
 
 void updateUltrasonicSensors(unsigned long nowMs) {
@@ -1158,12 +1337,15 @@ void loop() {
   handleUsbSerialInput();
   bool rcOverride = webControlActive();
 
+  unsigned long nowMs = millis();
+
   if (!rcOverride) {
     updateMotorUnitImu();
-    updateUltrasonicSensors(millis());
+    updateUltrasonicSensors(nowMs);
+  } else {
+    activeAvoidanceMode = AVOIDANCE_NONE;
   }
 
-  unsigned long nowMs = millis();
   if (!rcOverride && nowMs - lastMotorImuTelemetryAtMs >= 200) {
     lastMotorImuTelemetryAtMs = nowMs;
     sendMotorImuTelemetry();
@@ -1182,8 +1364,13 @@ void loop() {
     stopTargets();
   }
 
+  float effectiveVx = 0.0f;
+  float effectiveVy = 0.0f;
+  float effectiveWz = 0.0f;
+  effectiveMotionTargets(effectiveVx, effectiveVy, effectiveWz, nowMs);
+
   float w1, w2, w3;
-  omniMix(vx_cmd, vy_cmd, wz_cmd, w1, w2, w3);
+  omniMix(effectiveVx, effectiveVy, effectiveWz, w1, w2, w3);
 
   setMotorCommand(m1, w1);
   setMotorCommand(m2, w2);

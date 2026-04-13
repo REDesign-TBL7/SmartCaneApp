@@ -154,6 +154,27 @@ Ultrasonic note:
 - Sensor 3: `GPIO20` trigger, `GPIO21` echo
 - Sensor 4: `GPIO35` trigger, `GPIO36` echo
 
+Current avoidance roles:
+
+- Sensor 1 = right side
+- Sensor 3 = left side
+- Sensor 4 = front
+- Sensor 2 is still sampled and reported, but is not used as the primary front trigger
+
+Current local ESP32 avoidance behavior:
+
+- if sensor 4 reports an obstacle within about `100 cm`, the cane reverses for
+  `0.5 s`
+- while reversing, it compares the best clearance seen on sensor 1 and sensor 3
+- it then sidesteps toward the side with the greater clearance
+- if sensor 1 is the closest side obstacle within about `100 cm`, it sidesteps
+  left
+- if sensor 3 is the closest side obstacle within about `100 cm`, it sidesteps
+  right
+
+This avoidance runs locally on the ESP32 and temporarily overrides Pi
+navigation commands so the response does not depend on app/Pi round-trip time.
+
 Important calibration note:
 
 The current serial command mapping is translated onto the omni-drive mixer:
